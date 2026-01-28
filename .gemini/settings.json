@@ -1,4 +1,7 @@
 {
+  "hooksConfig": {
+    "enabled": true
+  },
   "hooks": {
     "AfterTool": [
       {
@@ -6,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".gemini/hooks/micro-commit.sh",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/micro-commit.sh",
             "timeout": 10000
           }
         ]
