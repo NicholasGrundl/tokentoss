@@ -1,0 +1,15 @@
+description = "Generates a git commit based on current changes."
+prompt = """
+Please generate a Conventional Commit message based on the following git diff:
+
+```diff
+!{git diff --staged}
+```
+
+If there are no staged changes, check for unstaged changes:
+```diff
+!{git diff}
+```
+
+If there are changes, generate the commit message and use `run_shell_command` to commit them.
+"""

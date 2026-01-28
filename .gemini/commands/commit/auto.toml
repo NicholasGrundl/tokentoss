@@ -1,0 +1,11 @@
+description = "Automatically generate and create a MACRO commit using LLM analysis of git history"
+prompt = """
+# Context
+This command automates MACRO commit creation using a modular pipeline:
+1. Extract git context
+2. Build LLM prompt
+3. Call LLM (Gemini)
+4. Create [MACRO] commit
+
+!{.gemini/hooks/commit-auto.sh}
+"""
