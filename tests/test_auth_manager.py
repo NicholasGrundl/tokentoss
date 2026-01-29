@@ -141,7 +141,7 @@ class TestAuthManager:
 
     def test_init_requires_config(self):
         """Test that either config or path is required."""
-        with pytest.raises(ValueError, match="Either client_config or client_secrets_path"):
+        with pytest.raises(ValueError, match="No client config provided"):
             AuthManager(storage=MemoryStorage())
 
     def test_get_authorization_url(self, auth_manager):
