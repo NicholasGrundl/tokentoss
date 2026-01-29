@@ -8,31 +8,6 @@
 # THRESHOLDS (configurable):
 # - MIN_MICRO_COUNT: Minimum number of micro commits to auto-create macro (default: 15)
 # - TIME_THRESHOLD_SECONDS: Time since last macro to assume new session (default: 3600 = 1 hour)
-#
-# PORTABLE SETUP INSTRUCTIONS:
-# 1. Make script executable:
-#    chmod +x .gemini/hooks/macro-commit.sh
-#
-# 2. Add hooks to .gemini/settings.local.json:
-#    {
-#      "hooks": {
-#        "Stop": [{
-#          "matcher": "",
-#          "hooks": [{"type": "command", "command": ".gemini/hooks/macro-commit.sh", "timeout": 45}]
-#        }],
-#        "PreCompact": [{
-#          "matcher": "manual",
-#          "hooks": [{"type": "command", "command": ".gemini/hooks/macro-commit.sh", "timeout": 45}]
-#        }],
-#        "SessionEnd": [{
-#          "matcher": "",
-#          "hooks": [{"type": "command", "command": ".gemini/hooks/macro-commit.sh", "timeout": 45}]
-#        }]
-#      }
-#    }
-#
-# 3. Create /macro-commit slash command in .gemini/commands/macro-commit.md:
-#    See macro-commit.md for the command template that calls this script
 
 # =============================================================================
 # CONFIGURATION
@@ -51,7 +26,7 @@ mkdir -p "$WORK_DIR"
 
 # Find the last [MACRO] commit hash
 find_last_macro() {
-    git log --oneline --grep="^\[MACRO\]" -1 --format="%H" 2>/dev/null || echo ""
+    git log --oneline --grep="^[MACRO]" -1 --format="%H" 2>/dev/null || echo ""
 }
 
 # Get timestamp of last macro commit (unix timestamp)
@@ -83,17 +58,17 @@ get_micro_commits_since_last_macro() {
 
     if [ -z "$last_macro" ]; then
         # No previous macro, get all micros
-        git log --oneline --grep="^\[MICRO\]" --format="%H|%s|%ai" --reverse 2>/dev/null || echo ""
+        git log --oneline --grep="^[MICRO]" --format="%H|%s|%ai" --reverse 2>/dev/null || echo ""
     else
         # Get micros since last macro
-        git log --oneline --grep="^\[MICRO\]" --format="%H|%s|%ai" "${last_macro}..HEAD" --reverse 2>/dev/null || echo ""
+        git log --oneline --grep="^[MICRO]" --format="%H|%s|%ai" "${last_macro}..HEAD" --reverse 2>/dev/null || echo ""
     fi
 }
 
 # Generate simple fallback commit message
 generate_simple_message() {
     local micro_commits=$(get_micro_commits_since_last_macro)
-    local micro_count=$(echo "$micro_commits" | grep -c "^\[MICRO\]" || echo "0")
+    local micro_count=$(echo "$micro_commits" | grep -c "^[MICRO]" || echo "0")
 
     if [ "$micro_count" = "0" ]; then
         echo "chore: session checkpoint"
@@ -105,8 +80,8 @@ generate_simple_message() {
     fi
 }
 
-# Generate LLM prompt for commit message
-generate_llm_prompt() {
+# Print session data (for LLM context)
+print_session_data() {
     local last_macro=$(find_last_macro)
     local diff_range="HEAD~10..HEAD"  # Default fallback
 
@@ -116,7 +91,7 @@ generate_llm_prompt() {
 
     # Get all micro commits in this range
     local micro_commits=$(get_micro_commits_since_last_macro)
-    local micro_count=$(echo "$micro_commits" | grep -c "^\[MICRO\]" || echo "0")
+    local micro_count=$(echo "$micro_commits" | grep -c "^[MICRO]" || echo "0")
 
     # Get the cumulative diff of all changes (across all micro commits AND staged changes)
     local hist_diff=$(git diff "$diff_range" -- ':!.gemini/micro_commits.log' ':!.gemini/last_macro_commit' ':!.gemini/macro_amend.lock' 2>/dev/null)
@@ -130,12 +105,33 @@ generate_llm_prompt() {
     # Format micro commits for LLM
     local micro_activity=$(echo "$micro_commits" | while IFS='|' read -r hash msg timestamp; do
         # Extract just the message part after [MICRO]
-        local clean_msg=$(echo "$msg" | sed 's/^\[MICRO\] //')
+        local clean_msg=$(echo "$msg" | sed 's/^[[MICRO]] //')
         echo "• ${clean_msg}"
     done)
 
     # Get recent macro commits for style reference
-    local recent_macros=$(git log --oneline --grep="^\[MACRO\]" -3 2>/dev/null | sed 's/^\[MACRO\] //' | sed 's/^[a-f0-9]* /• /' || echo "")
+    local recent_macros=$(git log --oneline --grep="^[MACRO]" -3 2>/dev/null | sed 's/^[[MACRO]] //' | sed 's/^[a-f0-9]* /• /' || echo "")
+
+    echo "Micro Commits (${micro_count} total):"
+    echo "$micro_activity"
+    echo ""
+    echo "Changed Files:"
+    echo "$changed_files" | sed 's/^/• /'
+    echo ""
+    echo "Cumulative Diff:"
+    echo "\
+```diff"
+    echo "$git_diff"
+    echo "\
+```"
+    echo ""
+    echo "Previous macro commits:"
+    echo "$recent_macros"
+}
+
+# Generate LLM prompt for commit message
+generate_llm_prompt() {
+    local session_data=$(print_session_data)
 
     cat << EOF
 Generate a concise git commit message summarizing this development session.
@@ -160,20 +156,7 @@ Solution uses a simple lock to ensure only one refresh happens at a time.
 Tests updated to cover the new refresh flow and edge cases.
 
 ## Your Session Data
-
-Micro Commits (${micro_count} total):
-$micro_activity
-
-Changed Files:
-$(echo "$changed_files" | sed 's/^/• /')
-
-Cumulative Diff:
-\`\`\`diff
-$(echo "$git_diff")
-\`\`\`
-
-Previous macro commits (for style reference):
-$recent_macros
+$session_data
 
 ## Requirements
 - Use conventional commit format: type(scope): description
@@ -215,18 +198,43 @@ generate_llm_message() {
 # MAIN LOGIC
 # =============================================================================
 
-# Detect if this is a manual invocation (via /macro-commit) or auto (via Stop hook)
+# Argument parsing
 force_commit=false
-if [ -t 0 ] || [ "$1" = "--force" ]; then
-    # stdin is a terminal OR --force flag passed = manual invocation
+print_context=false
+
+for arg in "$@"; do
+    case $arg in
+        --force)
+            force_commit=true
+            ;;
+        --context)
+            print_context=true
+            force_commit=true # Context printing implies ignoring thresholds
+            ;;
+    esac
+done
+
+if [ -t 0 ]; then
+    # stdin is a terminal = manual invocation
     force_commit=true
 fi
+
+# If just printing context, we skip threshold checks but still stage files
+if [ "$print_context" = "true" ]; then
+    # Stage all changes so the context includes them
+    git add -A 2>/dev/null || true
+    
+    # Print the raw data (micros, diffs, changed files)
+    print_session_data
+    exit 0
+fi
+
 
 echo "🔄 Checking macro commit criteria..."
 
 # Check if there are any [MICRO] commits since last [MACRO]
 micro_commits=$(get_micro_commits_since_last_macro)
-micro_count=$(echo "$micro_commits" | grep -c "^\[MICRO\]" 2>/dev/null || echo "0")
+micro_count=$(echo "$micro_commits" | grep -c "^[MICRO]" 2>/dev/null || echo "0")
 
 # Also check for unstaged/staged changes
 has_changes=false
@@ -279,13 +287,15 @@ macro_msg="[MACRO] ${commit_message}"
 # Create the macro commit
 if git diff --staged --quiet; then
     # No staged changes, create empty commit to mark the session
-    if git commit --allow-empty -m "$macro_msg" --quiet 2>/dev/null; then
+    if git commit --allow-empty -m "$macro_msg" --quiet 2>/dev/null;
+ then
         echo "✓ Macro commit created (empty, summarizes ${micro_count} micro commits)"
         exit 0
     fi
 else
     # Has staged changes, create normal commit
-    if git commit -m "$macro_msg" --quiet 2>/dev/null; then
+    if git commit -m "$macro_msg" --quiet 2>/dev/null;
+ then
         echo "✓ Macro commit created (summarizes ${micro_count} micro commits + new changes)"
         exit 0
     fi
