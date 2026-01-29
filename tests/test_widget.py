@@ -590,8 +590,8 @@ class TestCallbackServerIntegration:
         finally:
             server.stop()
 
-    def test_server_handles_no_query_params(self):
-        """Test server handles request with no query params."""
+    def test_server_ignores_no_query_params(self):
+        """Test server ignores requests with no query params (e.g. favicon)."""
         server = CallbackServer()
         try:
             server.start()
@@ -603,7 +603,9 @@ class TestCallbackServerIntegration:
 
             time.sleep(0.2)
 
-            assert server.check_callback() is True
+            # Requests without code or error params (like /favicon.ico)
+            # should not be treated as callbacks
+            assert server.check_callback() is False
             assert server.auth_code is None
             assert server.error is None
         finally:
