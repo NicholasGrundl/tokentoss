@@ -350,13 +350,17 @@ function render({ model, el }) {
 
     function startPolling() {
         stopPolling();
+        let closedCount = 0;
         pollInterval = setInterval(() => {
-            // Check if popup closed
             if (popup && popup.closed) {
-                stopPolling();
-                popup = null;
-                // Tell Python to check for callback
-                model.send({ type: 'check_callback' });
+                closedCount++;
+                if (closedCount >= 2) {
+                    stopPolling();
+                    popup = null;
+                    model.send({ type: 'check_callback' });
+                }
+            } else {
+                closedCount = 0;
             }
         }, 500);
     }
