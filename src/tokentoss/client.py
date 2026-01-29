@@ -7,7 +7,7 @@ injection for requests to IAP-protected services.
 from __future__ import annotations
 
 import os
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import requests
 from google.auth.transport.requests import Request

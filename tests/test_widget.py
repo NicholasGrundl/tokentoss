@@ -9,15 +9,15 @@ import urllib.request
 
 import pytest
 
-from tokentoss.widget import GoogleAuthWidget, CallbackServer
-from tokentoss.auth_manager import ClientConfig, AuthManager
-from tokentoss.storage import MemoryStorage, TokenData
+from tokentoss.auth_manager import AuthManager, ClientConfig
 from tokentoss.exceptions import TokenExchangeError
-
+from tokentoss.storage import MemoryStorage, TokenData
+from tokentoss.widget import CallbackServer, GoogleAuthWidget
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_token_data(**overrides):
     """Create a TokenData with sensible defaults."""
@@ -51,6 +51,7 @@ def _mock_exchange(auth_manager, mocker, **token_overrides):
 # ---------------------------------------------------------------------------
 # CallbackServer unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestCallbackServer:
     """Tests for CallbackServer."""
@@ -123,6 +124,7 @@ class TestCallbackServer:
 # ---------------------------------------------------------------------------
 # GoogleAuthWidget unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestGoogleAuthWidget:
     """Tests for GoogleAuthWidget."""
@@ -339,6 +341,7 @@ class TestGoogleAuthWidget:
 # Flow simulation tests (Layer 2)
 # ---------------------------------------------------------------------------
 
+
 class TestAuthFlowSimulation:
     """Simulate the full auth flow as the JS frontend would drive it."""
 
@@ -519,6 +522,7 @@ class TestAuthFlowSimulation:
 # ---------------------------------------------------------------------------
 # Integration tests (Layer 3) - real HTTP to CallbackServer
 # ---------------------------------------------------------------------------
+
 
 def _http_get(url: str) -> None:
     """Make an HTTP GET request, ignoring errors."""

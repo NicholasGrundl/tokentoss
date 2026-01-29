@@ -3,26 +3,23 @@
 from __future__ import annotations
 
 import json
-import os
-import stat
 from pathlib import Path
 
 import pytest
 
-from tokentoss.exceptions import StorageError
 from tokentoss.setup import (
+    DEFAULT_REDIRECT_URIS,
+    GOOGLE_AUTH_URI,
+    GOOGLE_CERT_URL,
+    GOOGLE_TOKEN_URI,
     configure,
     configure_from_credentials,
     configure_from_file,
     get_config_path,
-    GOOGLE_AUTH_URI,
-    GOOGLE_TOKEN_URI,
-    GOOGLE_CERT_URL,
-    DEFAULT_REDIRECT_URIS,
 )
 
-
 # -- Helpers --
+
 
 def _make_client_secrets_file(tmp_path: Path, **overrides) -> Path:
     """Write a valid client_secrets.json to tmp_path and return its path."""
@@ -44,6 +41,7 @@ def _make_client_secrets_file(tmp_path: Path, **overrides) -> Path:
 
 # -- TestGetConfigPath --
 
+
 class TestGetConfigPath:
     def test_returns_path_object(self):
         result = get_config_path()
@@ -59,6 +57,7 @@ class TestGetConfigPath:
 
 
 # -- TestConfigureFromCredentials --
+
 
 class TestConfigureFromCredentials:
     def test_creates_file(self, mocker, tmp_path):
@@ -146,6 +145,7 @@ class TestConfigureFromCredentials:
 
 # -- TestConfigureFromFile --
 
+
 class TestConfigureFromFile:
     def test_copies_valid_file(self, mocker, tmp_path):
         source = _make_client_secrets_file(tmp_path)
@@ -194,12 +194,16 @@ class TestConfigureFromFile:
 
     def test_web_format_accepted(self, mocker, tmp_path):
         source = tmp_path / "web_secrets.json"
-        source.write_text(json.dumps({
-            "web": {
-                "client_id": "web-id",
-                "client_secret": "web-secret",
-            }
-        }))
+        source.write_text(
+            json.dumps(
+                {
+                    "web": {
+                        "client_id": "web-id",
+                        "client_secret": "web-secret",
+                    }
+                }
+            )
+        )
         dest = tmp_path / "installed" / "client_secrets.json"
         mocker.patch("tokentoss.setup.get_config_path", return_value=dest)
 
@@ -210,6 +214,7 @@ class TestConfigureFromFile:
 
 
 # -- TestConfigure (master function) --
+
 
 class TestConfigure:
     def test_routes_to_credentials(self, mocker, tmp_path):

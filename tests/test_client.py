@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 import pytest
 import requests
@@ -12,8 +12,8 @@ from tokentoss.client import IAPClient
 from tokentoss.exceptions import NoCredentialsError
 from tokentoss.storage import TokenData
 
-
 # -- Helpers --
+
 
 def _make_token_data(**kwargs) -> TokenData:
     """Create TokenData with sensible defaults."""
@@ -47,6 +47,7 @@ def _mock_response(status_code: int = 200, json_data: dict | None = None) -> Mag
 
 # -- TestIAPClientInit --
 
+
 class TestIAPClientInit:
     def test_base_url_trailing_slash_stripped(self):
         client = IAPClient(base_url="https://example.com/")
@@ -76,6 +77,7 @@ class TestIAPClientInit:
 
 # -- TestBuildUrl --
 
+
 class TestBuildUrl:
     def test_absolute_url_passes_through(self):
         client = IAPClient(base_url="https://example.com")
@@ -101,6 +103,7 @@ class TestBuildUrl:
 
 # -- TestGetIdToken --
 
+
 class TestGetIdToken:
     def test_from_auth_manager(self):
         mock_am = MagicMock()
@@ -121,6 +124,7 @@ class TestGetIdToken:
 
     def test_from_module_credentials(self, mocker):
         import tokentoss
+
         mock_creds = MagicMock()
         mock_creds.id_token = "module-id-token"
         mock_creds.expired = False
@@ -132,6 +136,7 @@ class TestGetIdToken:
 
     def test_from_module_credentials_refreshes_when_expired(self, mocker):
         import tokentoss
+
         mock_creds = MagicMock()
         mock_creds.id_token = "refreshed-module-token"
         mock_creds.expired = True
@@ -198,6 +203,7 @@ class TestGetIdToken:
 
 # -- TestRequest --
 
+
 class TestRequest:
     def _make_client_with_token(self, mocker, token="test-token"):
         """Create an IAPClient with mocked token discovery."""
@@ -259,13 +265,15 @@ class TestRequest:
         assert response.status_code == 200
         assert mock_session.request.call_count == 2
         # Second call to _get_id_token should be force_refresh=True
-        assert mock_get_token.call_args_list[1].kwargs.get("force_refresh") is True or \
-               mock_get_token.call_args_list[1].args == (True,)
+        assert mock_get_token.call_args_list[1].kwargs.get(
+            "force_refresh"
+        ) is True or mock_get_token.call_args_list[1].args == (True,)
 
     def test_401_refresh_fails_returns_original(self, mocker):
         """If refresh fails on 401, return the original 401 response."""
         mocker.patch.object(
-            IAPClient, "_get_id_token",
+            IAPClient,
+            "_get_id_token",
             side_effect=["old-token", NoCredentialsError("no creds")],
         )
         mock_session = MagicMock()
@@ -288,6 +296,7 @@ class TestRequest:
 
 
 # -- TestHTTPMethods --
+
 
 class TestHTTPMethods:
     @pytest.fixture(autouse=True)
@@ -333,6 +342,7 @@ class TestHTTPMethods:
 
 
 # -- TestLifecycle --
+
 
 class TestLifecycle:
     def test_close(self):

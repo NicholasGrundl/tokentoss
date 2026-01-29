@@ -1,8 +1,7 @@
 """Tests for tokentoss.auth_manager module."""
 
-import json
 import base64
-from pathlib import Path
+import json
 
 import pytest
 
@@ -10,11 +9,9 @@ from tokentoss.auth_manager import (
     AuthManager,
     ClientConfig,
     generate_pkce_pair,
-    GOOGLE_AUTH_URI,
-    GOOGLE_TOKEN_URI,
 )
-from tokentoss.storage import MemoryStorage, TokenData
 from tokentoss.exceptions import TokenExchangeError, TokenRefreshError
+from tokentoss.storage import MemoryStorage, TokenData
 
 
 class TestClientConfig:
@@ -23,15 +20,19 @@ class TestClientConfig:
     def test_from_file_installed(self, tmp_path):
         """Test loading from installed (desktop) app format."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "installed": {
-                "client_id": "test-client-id.apps.googleusercontent.com",
-                "client_secret": "test-secret",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["http://localhost"],
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "installed": {
+                        "client_id": "test-client-id.apps.googleusercontent.com",
+                        "client_secret": "test-secret",
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "redirect_uris": ["http://localhost"],
+                    }
+                }
+            )
+        )
 
         config = ClientConfig.from_file(secrets_file)
 
@@ -42,12 +43,16 @@ class TestClientConfig:
     def test_from_file_web(self, tmp_path):
         """Test loading from web app format."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "web": {
-                "client_id": "web-client-id.apps.googleusercontent.com",
-                "client_secret": "web-secret",
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "web": {
+                        "client_id": "web-client-id.apps.googleusercontent.com",
+                        "client_secret": "web-secret",
+                    }
+                }
+            )
+        )
 
         config = ClientConfig.from_file(secrets_file)
 
@@ -125,12 +130,16 @@ class TestAuthManager:
     def test_init_with_secrets_path(self, tmp_path):
         """Test initialization with client_secrets_path."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "installed": {
-                "client_id": "test-id",
-                "client_secret": "test-secret",
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "installed": {
+                        "client_id": "test-id",
+                        "client_secret": "test-secret",
+                    }
+                }
+            )
+        )
 
         manager = AuthManager(
             client_secrets_path=secrets_file,
@@ -191,9 +200,11 @@ class TestAuthManager:
     def test_exchange_code_extracts_email(self, auth_manager, mocker):
         """Test that email is extracted from ID token."""
         # ID token with email claim (header.payload.signature format)
-        payload = base64.urlsafe_b64encode(
-            json.dumps({"email": "user@example.com"}).encode()
-        ).rstrip(b"=").decode()
+        payload = (
+            base64.urlsafe_b64encode(json.dumps({"email": "user@example.com"}).encode())
+            .rstrip(b"=")
+            .decode()
+        )
         id_token = f"eyJhbGciOiJSUzI1NiJ9.{payload}.signature"
 
         mock_response = mocker.Mock()
@@ -304,19 +315,22 @@ class TestAuthManager:
         auth_manager.exchange_code("code", "verifier")
 
         import tokentoss
+
         assert tokentoss.CREDENTIALS is not None
 
     def test_loads_from_storage_on_init(self, client_config):
         """Test that tokens are loaded from storage on init."""
         storage = MemoryStorage()
-        storage.save(TokenData(
-            access_token="stored-access",
-            id_token="stored-id",
-            refresh_token="stored-refresh",
-            expiry="2099-01-01T00:00:00+00:00",
-            scopes=["openid"],
-            user_email="stored@example.com",
-        ))
+        storage.save(
+            TokenData(
+                access_token="stored-access",
+                id_token="stored-id",
+                refresh_token="stored-refresh",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                user_email="stored@example.com",
+            )
+        )
 
         manager = AuthManager(
             client_config=client_config,

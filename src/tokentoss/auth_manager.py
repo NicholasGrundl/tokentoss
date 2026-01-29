@@ -5,12 +5,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import os
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import requests
 from google.oauth2.credentials import Credentials
@@ -72,8 +71,7 @@ class ClientConfig:
             config = data["web"]
         else:
             raise ValueError(
-                "Invalid client_secrets.json format. "
-                "Expected 'installed' or 'web' key."
+                "Invalid client_secrets.json format. Expected 'installed' or 'web' key."
             )
 
         return cls(
@@ -298,7 +296,9 @@ class AuthManager:
 
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
-                error_msg = error_data.get("error_description", error_data.get("error", "Unknown error"))
+                error_msg = error_data.get(
+                    "error_description", error_data.get("error", "Unknown error")
+                )
                 raise TokenExchangeError(f"Token exchange failed: {error_msg}")
 
             data = response.json()
@@ -365,7 +365,9 @@ class AuthManager:
 
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
-                error_msg = error_data.get("error_description", error_data.get("error", "Unknown error"))
+                error_msg = error_data.get(
+                    "error_description", error_data.get("error", "Unknown error")
+                )
                 raise TokenRefreshError(f"Token refresh failed: {error_msg}")
 
             data = response.json()
@@ -386,7 +388,9 @@ class AuthManager:
                 id_token=data.get("id_token", self._token_data.id_token),
                 refresh_token=data.get("refresh_token", self._token_data.refresh_token),
                 expiry=expiry.isoformat(),
-                scopes=data.get("scope", " ".join(self._token_data.scopes)).split() if isinstance(self._token_data.scopes, list) else self._token_data.scopes,
+                scopes=data.get("scope", " ".join(self._token_data.scopes)).split()
+                if isinstance(self._token_data.scopes, list)
+                else self._token_data.scopes,
                 user_email=user_email,
             )
 
@@ -440,4 +444,5 @@ class AuthManager:
 
         # Clear module-level variable
         import tokentoss
+
         tokentoss.CREDENTIALS = None

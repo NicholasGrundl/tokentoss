@@ -167,9 +167,7 @@ def configure_from_file(source_path: str | Path) -> Path:
 
     section = config_data.get("installed") or config_data.get("web")
     if "client_id" not in section or "client_secret" not in section:
-        raise ValueError(
-            f"Missing client_id or client_secret in {source_path}."
-        )
+        raise ValueError(f"Missing client_id or client_secret in {source_path}.")
 
     return _write_config(config_data)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 import socket
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
@@ -523,7 +523,7 @@ class GoogleAuthWidget(anywidget.AnyWidget):
         client_secrets_path: str | None = None,
         client_config: ClientConfig | None = None,
         auth_manager: AuthManager | None = None,
-        storage: "FileStorage | MemoryStorage | None" = None,
+        storage: FileStorage | MemoryStorage | None = None,
         scopes: list[str] | None = None,
         **kwargs,
     ):

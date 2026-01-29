@@ -6,15 +6,14 @@ import json
 import os
 import stat
 import warnings
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import platformdirs
 
-from .exceptions import StorageError, InsecureFilePermissionsWarning
-
+from .exceptions import InsecureFilePermissionsWarning, StorageError
 
 # Default application name for platformdirs
 APP_NAME = "tokentoss"
@@ -143,7 +142,7 @@ class FileStorage:
         self._check_permissions()
 
         try:
-            with open(self.path, "r") as f:
+            with open(self.path) as f:
                 data = json.load(f)
             return TokenData.from_dict(data)
 
