@@ -96,7 +96,7 @@ response = client.post("/api/items", json={"name": "test"})
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/tokentoss.git
+git clone https://github.com/NicholasGrundl/tokentoss.git
 cd tokentoss
 uv sync --group dev
 
