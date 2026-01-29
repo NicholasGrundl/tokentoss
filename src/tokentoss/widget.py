@@ -601,6 +601,8 @@ class GoogleAuthWidget(anywidget.AnyWidget):
         # Check if already authenticated
         if self._auth_manager.is_authenticated:
             self._set_authenticated_state()
+        elif self._auth_manager.last_error is not None:
+            self.status = str(self._auth_manager.last_error)
 
         # Set up observers
         self.observe(self._on_auth_code_change, names=["auth_code"])
