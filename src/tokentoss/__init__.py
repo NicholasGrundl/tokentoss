@@ -56,6 +56,8 @@ __all__ = [
     "configure",
     "configure_from_credentials",
     "configure_from_file",
+    "disable_debug",
+    "enable_debug",
     "generate_pkce_pair",
     "get_config_path",
 ]
