@@ -79,6 +79,13 @@ class _CallbackHandler(BaseHTTPRequestHandler):
         state = params.get("state", [None])[0]
         error = params.get("error", [None])[0]
 
+        logger.debug(
+            "Callback received: code=%s, state=%s, error=%s",
+            bool(auth_code),
+            bool(state),
+            error,
+        )
+
         # Store in server instance
         self.server.auth_code = auth_code
         self.server.state = state
