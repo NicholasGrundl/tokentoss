@@ -181,6 +181,22 @@ _CSS = """
 .tokentoss-configure-error {
     color: #dc2626;
 }
+
+.tokentoss-configure-advanced-header {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    user-select: none;
+}
+
+.tokentoss-configure-advanced-header:hover {
+    color: #374151;
+}
+
+.tokentoss-configure-advanced-content {
+    margin-top: 4px;
+}
 """
 
 
