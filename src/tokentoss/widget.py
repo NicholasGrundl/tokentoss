@@ -146,8 +146,10 @@ class CallbackServer:
 
     def _serve(self):
         """Serve requests until callback is received or server is stopped."""
-        while self._server and not self._server.callback_received:
-            self._server.handle_request()
+        if self._server:
+            self._server.timeout = 0.5  # Short timeout for responsiveness
+            while self._server and not self._server.callback_received:
+                self._server.handle_request()
 
     def stop(self):
         """Stop the callback server."""
