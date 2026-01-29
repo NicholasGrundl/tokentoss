@@ -638,6 +638,8 @@ class GoogleAuthWidget(anywidget.AnyWidget):
             state=self.state,
         )
 
+        logger.debug("prepare_auth: redirect_uri=%s, state=%s", redirect_uri, self.state)
+
         self.status = "Waiting for authentication..."
         self.error = ""
 
