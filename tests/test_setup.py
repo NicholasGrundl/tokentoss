@@ -238,7 +238,7 @@ class TestConfigure:
         dest = tmp_path / "installed" / "client_secrets.json"
         mocker.patch("tokentoss.setup.get_config_path", return_value=dest)
 
-        result = configure(client_id="id", client_secret="secret", path=source)
+        configure(client_id="id", client_secret="secret", path=source)
         # Should use file path, not credentials
         data = json.loads(dest.read_text())
         assert data["installed"]["client_id"] == "test-id.apps.googleusercontent.com"
