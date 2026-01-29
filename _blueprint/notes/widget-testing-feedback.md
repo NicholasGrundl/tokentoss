@@ -16,7 +16,21 @@ Collected during manual testing walkthrough. Items here are candidates for the w
 
 ## GoogleAuthWidget
 
-*(to be filled as testing continues)*
+### 2. Style "Sign out" as a red button instead of a text link
+- Currently rendered as an `<a>` tag styled as subtle text — easy to miss
+- **Proposal:** Render as a button with red background/border to make it visually distinct from the sign-in button
+- **Priority:** Low — cosmetic, bundle with widgets refactor
+
+### 3. `is_authenticated` should check token expiry, not just existence
+- `AuthManager.is_authenticated` only checks `self._credentials is not None` (`auth_manager.py:220-222`)
+- `_load_from_storage()` loads tokens from disk without checking `is_expired` (`auth_manager.py:158-171`)
+- Result: widget shows "Signed in as ..." even when access token has been expired for hours/days
+- The refresh happens lazily when `credentials` property is accessed (e.g. by `IAPClient`), but the widget state is misleading
+- **Proposal:** On widget init, if tokens are loaded from storage and expired, attempt a silent refresh. If refresh fails, show "Sign in" button instead of stale "Signed in" state. Consider:
+  - `is_authenticated` could return `False` when both access token is expired AND refresh fails
+  - Widget could show "Session expired — sign in again" instead of "Signed in as ..."
+  - Add optional max session lifetime (e.g. 7 days) after which stored tokens are discarded regardless of refresh token validity
+- **Priority:** Medium — security/UX concern, should address before v0.1.0 or at latest v0.2.0
 
 ---
 
