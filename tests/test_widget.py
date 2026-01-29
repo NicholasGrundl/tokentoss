@@ -359,11 +359,7 @@ class TestAuthFlowSimulation:
 
     def test_full_flow_via_manual_paste(self, widget, mocker):
         """Simulate: button click → prepare → paste URL → exchange → authenticated."""
-        mocker.patch.object(
-            widget._auth_manager,
-            "exchange_code",
-            return_value=_make_token_data(user_email="flow@example.com"),
-        )
+        _mock_exchange(widget._auth_manager, mocker, user_email="flow@example.com")
 
         # 1. JS sends prepare_auth message (button click)
         widget._handle_message(widget, {"type": "prepare_auth"}, [])
@@ -383,11 +379,7 @@ class TestAuthFlowSimulation:
 
     def test_full_flow_via_callback_server(self, widget, mocker):
         """Simulate: button click → prepare → server receives code → authenticated."""
-        mocker.patch.object(
-            widget._auth_manager,
-            "exchange_code",
-            return_value=_make_token_data(user_email="server@example.com"),
-        )
+        _mock_exchange(widget._auth_manager, mocker, user_email="server@example.com")
 
         # 1. JS sends prepare_auth
         widget._handle_message(widget, {"type": "prepare_auth"}, [])
@@ -411,11 +403,7 @@ class TestAuthFlowSimulation:
 
     def test_sign_out_and_reauthenticate(self, widget, mocker):
         """Test full sign-out → re-authenticate cycle."""
-        mocker.patch.object(
-            widget._auth_manager,
-            "exchange_code",
-            return_value=_make_token_data(user_email="first@example.com"),
-        )
+        _mock_exchange(widget._auth_manager, mocker, user_email="first@example.com")
 
         # First auth
         widget._handle_message(widget, {"type": "prepare_auth"}, [])
@@ -430,11 +418,7 @@ class TestAuthFlowSimulation:
         assert widget.status == "Click to sign in"
 
         # Re-authenticate with different user
-        mocker.patch.object(
-            widget._auth_manager,
-            "exchange_code",
-            return_value=_make_token_data(user_email="second@example.com"),
-        )
+        _mock_exchange(widget._auth_manager, mocker, user_email="second@example.com")
         widget._handle_message(widget, {"type": "prepare_auth"}, [])
         widget.auth_code = "second-code"
         assert widget.is_authenticated is True
@@ -456,11 +440,7 @@ class TestAuthFlowSimulation:
         assert "network_error" in widget.error
 
         # Retry succeeds
-        mocker.patch.object(
-            widget._auth_manager,
-            "exchange_code",
-            return_value=_make_token_data(),
-        )
+        _mock_exchange(widget._auth_manager, mocker)
 
         widget._handle_message(widget, {"type": "prepare_auth"}, [])
         widget.auth_code = "good-code"
