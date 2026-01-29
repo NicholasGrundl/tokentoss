@@ -584,8 +584,15 @@ class GoogleAuthWidget(anywidget.AnyWidget):
 
     def _try_start_server(self) -> None:
         """Try to start the callback server."""
+        if self._callback_server:
+            self._callback_server.stop()
+            logger.debug("Stopped old callback server on port %s", self._callback_server.port)
         self._callback_server = CallbackServer()
         self._server_available = self._callback_server.start()
+        if self._server_available:
+            logger.debug("Started callback server on port %s", self._callback_server.port)
+        else:
+            logger.warning("Failed to start callback server")
 
     @property
     def auth_manager(self) -> AuthManager:
