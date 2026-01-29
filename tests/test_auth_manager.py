@@ -1,10 +1,8 @@
 """Tests for tokentoss.auth_manager module."""
 
 import json
-import tempfile
-from datetime import datetime, timezone, timedelta
+import base64
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
@@ -168,10 +166,9 @@ class TestAuthManager:
 
         assert "state=csrf-token-123" in url
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_success(self, mock_post, auth_manager):
+    def test_exchange_code_success(self, auth_manager, mocker):
         """Test successful code exchange."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token-123",
@@ -180,7 +177,7 @@ class TestAuthManager:
             "expires_in": 3600,
             "scope": "openid email",
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.exchange_code(
             auth_code="auth-code-123",
@@ -191,17 +188,15 @@ class TestAuthManager:
         assert token_data.refresh_token == "refresh-token-123"
         assert auth_manager.is_authenticated is True
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_extracts_email(self, mock_post, auth_manager):
+    def test_exchange_code_extracts_email(self, auth_manager, mocker):
         """Test that email is extracted from ID token."""
         # ID token with email claim (header.payload.signature format)
-        import base64
         payload = base64.urlsafe_b64encode(
             json.dumps({"email": "user@example.com"}).encode()
         ).rstrip(b"=").decode()
         id_token = f"eyJhbGciOiJSUzI1NiJ9.{payload}.signature"
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token",
@@ -209,27 +204,25 @@ class TestAuthManager:
             "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.exchange_code("code", "verifier")
 
         assert token_data.user_email == "user@example.com"
         assert auth_manager.user_email == "user@example.com"
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_failure(self, mock_post, auth_manager):
+    def test_exchange_code_failure(self, auth_manager, mocker):
         """Test code exchange failure handling."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 400
         mock_response.content = b'{"error": "invalid_grant"}'
         mock_response.json.return_value = {"error": "invalid_grant"}
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         with pytest.raises(TokenExchangeError, match="invalid_grant"):
             auth_manager.exchange_code("bad-code", "verifier")
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_refresh_tokens_success(self, mock_post, auth_manager):
+    def test_refresh_tokens_success(self, auth_manager, mocker):
         """Test successful token refresh."""
         # First, set up initial tokens
         auth_manager._token_data = TokenData(
@@ -240,14 +233,14 @@ class TestAuthManager:
             scopes=["openid"],
         )
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "new-access-token",
             "id_token": "new-id-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.refresh_tokens()
 
@@ -260,8 +253,7 @@ class TestAuthManager:
         with pytest.raises(TokenRefreshError, match="No refresh token"):
             auth_manager.refresh_tokens()
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_refresh_tokens_failure(self, mock_post, auth_manager):
+    def test_refresh_tokens_failure(self, auth_manager, mocker):
         """Test token refresh failure."""
         auth_manager._token_data = TokenData(
             access_token="old",
@@ -271,16 +263,16 @@ class TestAuthManager:
             scopes=[],
         )
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 400
         mock_response.content = b'{"error": "invalid_grant"}'
         mock_response.json.return_value = {"error": "invalid_grant"}
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         with pytest.raises(TokenRefreshError):
             auth_manager.refresh_tokens()
 
-    def test_clear(self, auth_manager):
+    def test_clear(self, auth_manager, mocker):
         """Test clearing credentials."""
         auth_manager._token_data = TokenData(
             access_token="a",
@@ -289,7 +281,7 @@ class TestAuthManager:
             expiry="2099-01-01T00:00:00+00:00",
             scopes=[],
         )
-        auth_manager._credentials = Mock()
+        auth_manager._credentials = mocker.Mock()
 
         auth_manager.clear()
 
@@ -297,10 +289,9 @@ class TestAuthManager:
         assert auth_manager._credentials is None
         assert auth_manager.storage.load() is None
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_sets_module_credentials(self, mock_post, auth_manager):
+    def test_sets_module_credentials(self, auth_manager, mocker):
         """Test that module-level CREDENTIALS is set on success."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token",
@@ -308,7 +299,7 @@ class TestAuthManager:
             "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         auth_manager.exchange_code("code", "verifier")
 
