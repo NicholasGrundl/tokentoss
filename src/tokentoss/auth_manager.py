@@ -113,6 +113,7 @@ class AuthManager:
         client_secrets_path: str | Path | None = None,
         storage: FileStorage | MemoryStorage | None = None,
         scopes: list[str] | None = None,
+        max_session_lifetime_hours: int = DEFAULT_MAX_SESSION_LIFETIME_HOURS,
     ) -> None:
         """Initialize AuthManager.
 
@@ -121,6 +122,8 @@ class AuthManager:
             client_secrets_path: Path to client_secrets.json (alternative to client_config).
             storage: Token storage backend. Defaults to FileStorage.
             scopes: OAuth scopes. Defaults to DEFAULT_SCOPES.
+            max_session_lifetime_hours: Maximum session lifetime in hours before
+                requiring re-authentication. Defaults to 24.
 
         Raises:
             ValueError: If neither client_config nor client_secrets_path provided.
