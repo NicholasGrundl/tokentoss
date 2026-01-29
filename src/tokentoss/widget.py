@@ -558,6 +558,7 @@ class GoogleAuthWidget(anywidget.AnyWidget):
         auth_manager: AuthManager | None = None,
         storage: FileStorage | MemoryStorage | None = None,
         scopes: list[str] | None = None,
+        max_session_lifetime_hours: int | None = None,
         **kwargs,
     ):
         """Initialize the authentication widget.
@@ -568,6 +569,8 @@ class GoogleAuthWidget(anywidget.AnyWidget):
             auth_manager: Existing AuthManager instance (alternative to above).
             storage: Token storage backend (default: FileStorage).
             scopes: OAuth scopes (default: openid, email, profile).
+            max_session_lifetime_hours: Maximum session lifetime in hours.
+                Only used when creating a new AuthManager (ignored if auth_manager provided).
         """
         super().__init__(**kwargs)
 
@@ -575,12 +578,15 @@ class GoogleAuthWidget(anywidget.AnyWidget):
         if auth_manager is not None:
             self._auth_manager = auth_manager
         else:
-            self._auth_manager = AuthManager(
-                client_secrets_path=client_secrets_path,
-                client_config=client_config,
-                storage=storage,
-                scopes=scopes,
-            )
+            am_kwargs: dict = {
+                "client_secrets_path": client_secrets_path,
+                "client_config": client_config,
+                "storage": storage,
+                "scopes": scopes,
+            }
+            if max_session_lifetime_hours is not None:
+                am_kwargs["max_session_lifetime_hours"] = max_session_lifetime_hours
+            self._auth_manager = AuthManager(**am_kwargs)
 
         # PKCE state
         self._code_verifier: str | None = None
