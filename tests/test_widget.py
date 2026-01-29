@@ -33,6 +33,21 @@ def _make_token_data(**overrides):
     return TokenData(**defaults)
 
 
+def _mock_exchange(auth_manager, mocker, **token_overrides):
+    """Mock exchange_code so it also updates the auth manager's internal state.
+
+    When exchange_code is mocked, the auth manager's _token_data doesn't get
+    set. This helper creates a side_effect that simulates the real behavior.
+    """
+    token_data = _make_token_data(**token_overrides)
+
+    def side_effect(auth_code, code_verifier, redirect_uri="http://localhost"):
+        auth_manager._token_data = token_data
+        return token_data
+
+    return mocker.patch.object(auth_manager, "exchange_code", side_effect=side_effect)
+
+
 # ---------------------------------------------------------------------------
 # CallbackServer unit tests
 # ---------------------------------------------------------------------------
