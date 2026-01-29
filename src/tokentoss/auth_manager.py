@@ -153,6 +153,9 @@ class AuthManager:
         # Set scopes
         self.scopes = scopes if scopes is not None else DEFAULT_SCOPES.copy()
 
+        # Session lifetime
+        self.max_session_lifetime_hours = max_session_lifetime_hours
+
         # State
         self._credentials: Credentials | None = None
         self._token_data: TokenData | None = None
