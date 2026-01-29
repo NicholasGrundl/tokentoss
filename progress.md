@@ -54,28 +54,41 @@ data = client.get_json("/api/data")  # ID token added automatically
    - `refresh_tokens()` - refreshes expired tokens
    - Auto-sets `tokentoss.CREDENTIALS` on success
 
+### Phase 2: GoogleAuthWidget ✅
+
+**Files Created:**
+| File | Purpose |
+|------|---------|
+| `src/tokentoss/widget.py` | GoogleAuthWidget anywidget implementation |
+| `tests/test_widget.py` | 22 tests |
+
+**Test Status:** 59 tests passing (total)
+
+**Key Classes Implemented:**
+
+1. **CallbackServer** - Temporary HTTP server to capture OAuth callback:
+   - Starts on random available port
+   - Receives auth code from Google redirect
+   - Auto-detects if server is available (fallback to manual input)
+
+2. **GoogleAuthWidget** - anywidget-based OAuth widget:
+   - "Sign in with Google" button with Google logo
+   - Opens popup for OAuth flow
+   - Auto-captures callback via local server OR manual URL paste
+   - PKCE code_verifier generated in Python
+   - Auto-exchanges auth code for tokens via `observe()`
+   - Status display: "Click to sign in" → "Waiting..." → "Signed in as X" / "Error: ..."
+   - Sign out functionality
+
+**Key Design Decisions:**
+- **Dual callback approach:** Local HTTP server (primary) + manual URL paste (fallback)
+- **Server auto-detection:** Works in local Jupyter, falls back for Colab/JupyterHub
+- **Security:** PKCE + CSRF state token validation
+- **Traitlets:** auth_url, auth_code, status, error, user_email, is_authenticated
+
 ---
 
 ## Next Steps (Not Started)
-
-### Phase 2: GoogleAuthWidget
-
-**File:** `src/tokentoss/widget.py` (currently placeholder)
-
-**What to build:**
-- anywidget-based widget with "Sign in with Google" button
-- Opens popup for OAuth flow
-- Bundled callback HTML page (blob URL) that uses postMessage to return auth code
-- Traitlets for state sync: `auth_code`, `status`, `error`, `user_email`
-- PKCE code_verifier generated in Python, code_challenge passed to auth URL
-- Auto-calls `auth_manager.exchange_code()` when auth_code arrives via `observe()`
-- Status display: "Click to sign in" → "Waiting..." → "Signed in as X" / "Error: ..."
-
-**Key Design Decisions:**
-- Callback method: postMessage API (popup → parent window)
-- Callback page: Embedded in widget JS as blob URL (self-contained)
-- Security: PKCE (code_verifier + code_challenge)
-- Code handoff: Traitlet sync with `observe()` callback
 
 ### Phase 3: IAPClient
 
