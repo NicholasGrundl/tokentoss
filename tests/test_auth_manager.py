@@ -360,9 +360,7 @@ class TestSessionLifetime:
     def test_stale_session_cleared(self, client_config):
         """Test that a session older than max lifetime is cleared."""
         storage = MemoryStorage()
-        old_created = (
-            datetime.now(timezone.utc) - timedelta(hours=25)
-        ).isoformat()
+        old_created = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
         storage.save(
             TokenData(
                 access_token="a",
@@ -388,9 +386,7 @@ class TestSessionLifetime:
     def test_fresh_session_not_cleared(self, client_config):
         """Test that a session within max lifetime is kept."""
         storage = MemoryStorage()
-        recent_created = (
-            datetime.now(timezone.utc) - timedelta(hours=1)
-        ).isoformat()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         storage.save(
             TokenData(
                 access_token="a",
@@ -413,9 +409,7 @@ class TestSessionLifetime:
     def test_expired_token_refresh_succeeds(self, client_config, mocker):
         """Test that expired token within session lifetime is refreshed."""
         storage = MemoryStorage()
-        recent_created = (
-            datetime.now(timezone.utc) - timedelta(hours=1)
-        ).isoformat()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         storage.save(
             TokenData(
                 access_token="old-access",
@@ -451,9 +445,7 @@ class TestSessionLifetime:
     def test_expired_token_refresh_fails_clears_creds(self, client_config, mocker):
         """Test that failed refresh clears credentials and storage."""
         storage = MemoryStorage()
-        recent_created = (
-            datetime.now(timezone.utc) - timedelta(hours=1)
-        ).isoformat()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         storage.save(
             TokenData(
                 access_token="old-access",

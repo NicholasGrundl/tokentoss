@@ -30,11 +30,7 @@ def enable_debug(level: int = logging.DEBUG) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.name = _HANDLER_NAME
     handler.setLevel(level)
-    handler.setFormatter(
-        logging.Formatter(
-            "[%(name)s %(levelname)s] %(message)s"
-        )
-    )
+    handler.setFormatter(logging.Formatter("[%(name)s %(levelname)s] %(message)s"))
     _package_logger.addHandler(handler)
 
 
@@ -42,6 +38,5 @@ def disable_debug() -> None:
     """Disable debug logging and remove the tokentoss handler."""
     _package_logger.setLevel(logging.WARNING)
     _package_logger.handlers = [
-        h for h in _package_logger.handlers
-        if getattr(h, "name", None) != _HANDLER_NAME
+        h for h in _package_logger.handlers if getattr(h, "name", None) != _HANDLER_NAME
     ]

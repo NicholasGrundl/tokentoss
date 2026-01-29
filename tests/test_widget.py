@@ -340,9 +340,7 @@ class TestGoogleAuthWidget:
     def test_session_expired_shows_message(self, client_config, mocker):
         """Test that expired session shows status message on widget."""
         storage = MemoryStorage()
-        old_created = (
-            datetime.now(timezone.utc) - timedelta(hours=25)
-        ).isoformat()
+        old_created = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
         storage.save(_make_token_data(created_at=old_created))
 
         mocker.patch.object(CallbackServer, "start", return_value=True)
@@ -358,9 +356,7 @@ class TestGoogleAuthWidget:
     def test_refresh_failure_shows_expired_message(self, client_config, mocker):
         """Test that failed refresh shows session expired message."""
         storage = MemoryStorage()
-        recent_created = (
-            datetime.now(timezone.utc) - timedelta(hours=1)
-        ).isoformat()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         storage.save(
             _make_token_data(
                 expiry="2020-01-01T00:00:00+00:00",

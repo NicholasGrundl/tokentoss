@@ -185,9 +185,7 @@ class AuthManager:
                 # Check if session is stale (max lifetime exceeded)
                 if self._is_session_stale(token_data):
                     self.storage.clear()
-                    self.last_error = Exception(
-                        "Session expired — sign in again"
-                    )
+                    self.last_error = Exception("Session expired — sign in again")
                     return
 
                 # Check if token is expired and try to refresh
@@ -197,13 +195,11 @@ class AuthManager:
                         self._credentials = self._create_credentials(token_data)
                         self.refresh_tokens()
                         self._set_module_credentials()
-                    except TokenRefreshError as e:
+                    except TokenRefreshError:
                         self._credentials = None
                         self._token_data = None
                         self.storage.clear()
-                        self.last_error = Exception(
-                            "Session expired — sign in again"
-                        )
+                        self.last_error = Exception("Session expired — sign in again")
                     return
 
                 self._token_data = token_data
