@@ -254,3 +254,21 @@ class TestConfigure:
     def test_only_client_secret_raises(self):
         with pytest.raises(ValueError, match="Provide either"):
             configure(client_secret="secret")
+
+    def test_with_project_id(self, mocker, tmp_path):
+        dest = tmp_path / "client_secrets.json"
+        mocker.patch("tokentoss.setup.get_config_path", return_value=dest)
+
+        configure(client_id="id", client_secret="secret", project_id="my-proj")
+
+        data = json.loads(dest.read_text())
+        assert data["installed"]["project_id"] == "my-proj"
+
+    def test_without_project_id(self, mocker, tmp_path):
+        dest = tmp_path / "client_secrets.json"
+        mocker.patch("tokentoss.setup.get_config_path", return_value=dest)
+
+        configure(client_id="id", client_secret="secret")
+
+        data = json.loads(dest.read_text())
+        assert "project_id" not in data["installed"]
