@@ -103,3 +103,12 @@ Before any release, do a hands-on check in JupyterLab:
 - [ ] `GoogleAuthWidget()` (no args) picks up the configured credentials
 - [ ] Full OAuth flow completes and `IAPClient` can make authenticated requests
 - [ ] Sign out and re-authenticate cycle works cleanly
+
+
+
+# Misc
+
+1. cloufbuild and CI/CD planning
+- how to setup cloud build
+- how to install from cloud build when on a local machine using uv
+- should we make this a public package and pass the client secrets so that this is the public entry into the auth side of everythiong on a client machine?
