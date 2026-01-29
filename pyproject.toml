@@ -19,12 +19,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Framework :: Jupyter",
 ]
-[project.urls]
-Homepage = "https://github.com/NicholasGrundl/tokentoss"
-Repository = "https://github.com/NicholasGrundl/tokentoss"
-Issues = "https://github.com/NicholasGrundl/tokentoss/issues"
-Changelog = "https://github.com/NicholasGrundl/tokentoss/releases"
-
 dependencies = [
     "anywidget>=0.9.0",
     "google-auth>=2.23.0",
@@ -32,6 +26,12 @@ dependencies = [
     "requests>=2.31.0",
     "platformdirs>=4.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NicholasGrundl/tokentoss"
+Repository = "https://github.com/NicholasGrundl/tokentoss"
+Issues = "https://github.com/NicholasGrundl/tokentoss/issues"
+Changelog = "https://github.com/NicholasGrundl/tokentoss/releases"
 
 [dependency-groups]
 dev = [
