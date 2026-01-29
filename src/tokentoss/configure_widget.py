@@ -214,6 +214,7 @@ class ConfigureWidget(anywidget.AnyWidget):
 
     client_id = traitlets.Unicode("").tag(sync=True)
     client_secret = traitlets.Unicode("").tag(sync=True)
+    project_id = traitlets.Unicode("").tag(sync=True)
     status = traitlets.Unicode("Enter credentials").tag(sync=True)
     configured = traitlets.Bool(False).tag(sync=True)
     _submit = traitlets.Int(0).tag(sync=True)
