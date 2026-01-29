@@ -79,18 +79,24 @@ class _CallbackHandler(BaseHTTPRequestHandler):
         state = params.get("state", [None])[0]
         error = params.get("error", [None])[0]
 
+        # Ignore non-callback requests (e.g. /favicon.ico) that would
+        # overwrite the real auth code with None.
+        is_callback = auth_code is not None or error is not None
         logger.debug(
-            "Callback received: code=%s, state=%s, error=%s",
+            "do_GET %s: code=%s, state=%s, error=%s, is_callback=%s",
+            self.path,
             bool(auth_code),
             bool(state),
             error,
+            is_callback,
         )
 
-        # Store in server instance
-        self.server.auth_code = auth_code
-        self.server.state = state
-        self.server.error = error
-        self.server.callback_received = True
+        if is_callback:
+            # Store in server instance
+            self.server.auth_code = auth_code
+            self.server.state = state
+            self.server.error = error
+            self.server.callback_received = True
 
         # Send response
         self.send_response(200)
