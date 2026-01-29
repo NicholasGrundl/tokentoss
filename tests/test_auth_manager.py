@@ -68,7 +68,7 @@ class TestClientConfig:
         secrets_file = tmp_path / "client_secrets.json"
         secrets_file.write_text(json.dumps({"invalid": {}}))
 
-        with pytest.raises(ValueError, match="Invalid client_secrets.json"):
+        with pytest.raises(ValueError, match=r"Invalid client_secrets\.json"):
             ClientConfig.from_file(secrets_file)
 
 
