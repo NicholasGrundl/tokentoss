@@ -38,6 +38,33 @@ function render({ model, el }) {
     secretInput.className = 'tokentoss-configure-input';
     secretInput.placeholder = 'GOCSPX-...';
 
+    // Advanced (optional) section
+    const advancedHeader = document.createElement('div');
+    advancedHeader.className = 'tokentoss-configure-advanced-header';
+    advancedHeader.innerHTML = '&#9654; Advanced (optional)';
+    let advancedOpen = false;
+
+    const advancedContent = document.createElement('div');
+    advancedContent.className = 'tokentoss-configure-advanced-content';
+    advancedContent.style.display = 'none';
+
+    const projectLabel = document.createElement('label');
+    projectLabel.className = 'tokentoss-configure-label';
+    projectLabel.textContent = 'Project ID';
+    const projectInput = document.createElement('input');
+    projectInput.type = 'text';
+    projectInput.className = 'tokentoss-configure-input';
+    projectInput.placeholder = 'my-gcp-project';
+
+    advancedContent.appendChild(projectLabel);
+    advancedContent.appendChild(projectInput);
+
+    advancedHeader.addEventListener('click', () => {
+        advancedOpen = !advancedOpen;
+        advancedContent.style.display = advancedOpen ? 'block' : 'none';
+        advancedHeader.innerHTML = (advancedOpen ? '&#9660;' : '&#9654;') + ' Advanced (optional)';
+    });
+
     // Submit button
     const button = document.createElement('button');
     button.className = 'tokentoss-configure-button';
@@ -52,6 +79,8 @@ function render({ model, el }) {
     container.appendChild(idInput);
     container.appendChild(secretLabel);
     container.appendChild(secretInput);
+    container.appendChild(advancedHeader);
+    container.appendChild(advancedContent);
     container.appendChild(button);
     container.appendChild(statusEl);
     el.appendChild(container);
