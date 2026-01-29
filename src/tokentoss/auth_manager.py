@@ -164,11 +164,48 @@ class AuthManager:
         # Try to load existing tokens
         self._load_from_storage()
 
+    def _is_session_stale(self, token_data: TokenData) -> bool:
+        """Check if the session has exceeded the max lifetime.
+
+        Returns False if created_at is None (backward compat with old tokens).
+        """
+        if token_data.created_at is None:
+            return False
+        created = token_data.created_at_datetime
+        if created is None:
+            return False
+        age = datetime.now(timezone.utc) - created
+        return age > timedelta(hours=self.max_session_lifetime_hours)
+
     def _load_from_storage(self) -> None:
         """Load tokens from storage if available."""
         try:
             token_data = self.storage.load()
             if token_data is not None:
+                # Check if session is stale (max lifetime exceeded)
+                if self._is_session_stale(token_data):
+                    self.storage.clear()
+                    self.last_error = Exception(
+                        "Session expired — sign in again"
+                    )
+                    return
+
+                # Check if token is expired and try to refresh
+                if token_data.is_expired:
+                    try:
+                        self._token_data = token_data
+                        self._credentials = self._create_credentials(token_data)
+                        self.refresh_tokens()
+                        self._set_module_credentials()
+                    except TokenRefreshError as e:
+                        self._credentials = None
+                        self._token_data = None
+                        self.storage.clear()
+                        self.last_error = Exception(
+                            "Session expired — sign in again"
+                        )
+                    return
+
                 self._token_data = token_data
                 self._credentials = self._create_credentials(token_data)
 
