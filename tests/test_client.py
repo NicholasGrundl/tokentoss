@@ -11,7 +11,6 @@ from tokentoss.client import IAPClient
 from tokentoss.exceptions import NoCredentialsError
 from tokentoss.storage import TokenData
 
-
 # -- Helpers --
 
 

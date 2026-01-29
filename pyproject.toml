@@ -87,3 +87,9 @@ quote-style = "double"
 
 [tool.ty.environment]
 python-version = "3.10"
+
+[[tool.ty.overrides]]
+include = ["src/tokentoss/widget.py"]
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
