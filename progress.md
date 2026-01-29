@@ -149,7 +149,7 @@ Tokens stored, CREDENTIALS set, widget shows "Signed in as X"
 ## Files Reference
 
 ```
-/Users/nicholasgrundl/projects/gcptest/
+/Users/nicholasgrundl/projects/tokentoss/
 ├── pyproject.toml              # Package config
 ├── README.md                   # User docs
 ├── progress.md                 # THIS FILE
@@ -158,11 +158,12 @@ Tokens stored, CREDENTIALS set, widget shows "Signed in as X"
 │   ├── auth_manager.py         # AuthManager, ClientConfig, PKCE
 │   ├── storage.py              # FileStorage, MemoryStorage, TokenData
 │   ├── exceptions.py           # Custom exceptions
-│   ├── widget.py               # PLACEHOLDER - Phase 2
+│   ├── widget.py               # GoogleAuthWidget ✅
 │   └── client.py               # PLACEHOLDER - Phase 3
 ├── tests/
 │   ├── test_storage.py         # 17 tests ✅
-│   └── test_auth_manager.py    # 20 tests ✅
+│   ├── test_auth_manager.py    # 20 tests ✅
+│   └── test_widget.py          # 22 tests ✅
 └── _blueprint/
     └── plan/
         └── tokentoss_implementation.md  # Full design decisions
