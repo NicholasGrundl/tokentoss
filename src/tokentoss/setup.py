@@ -80,7 +80,7 @@ def configure(
     if path is not None:
         return configure_from_file(path)
     elif client_id is not None and client_secret is not None:
-        return configure_from_credentials(client_id, client_secret)
+        return configure_from_credentials(client_id, client_secret, project_id=project_id)
     else:
         raise ValueError(
             "Provide either (client_id, client_secret) or path to an existing "
