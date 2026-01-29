@@ -148,8 +148,12 @@ class TestAuthManager:
 
         assert manager.client_config.client_id == "test-id"
 
-    def test_init_requires_config(self):
+    def test_init_requires_config(self, mocker):
         """Test that either config or path is required."""
+        mocker.patch(
+            "tokentoss.setup.get_config_path",
+            return_value=Path("/nonexistent/path/client_secrets.json"),
+        )
         with pytest.raises(ValueError, match="No client config provided"):
             AuthManager(storage=MemoryStorage())
 
