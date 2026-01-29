@@ -47,6 +47,7 @@ def configure(
     client_id: str | None = None,
     client_secret: str | None = None,
     path: str | Path | None = None,
+    project_id: str | None = None,
 ) -> Path:
     """Install client secrets to the standard tokentoss config location.
 
