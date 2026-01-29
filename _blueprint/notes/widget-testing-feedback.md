@@ -29,7 +29,10 @@ Collected during manual testing walkthrough. Items here are candidates for the w
 - **Proposal:** On widget init, if tokens are loaded from storage and expired, attempt a silent refresh. If refresh fails, show "Sign in" button instead of stale "Signed in" state. Consider:
   - `is_authenticated` could return `False` when both access token is expired AND refresh fails
   - Widget could show "Session expired — sign in again" instead of "Signed in as ..."
-  - Add optional max session lifetime (e.g. 7 days) after which stored tokens are discarded regardless of refresh token validity
+  - Add max session lifetime (e.g. 7 days default, configurable) after which stored tokens are discarded regardless of refresh token validity
+  - Store `created_at` timestamp in `tokens.json`; on load, discard if older than max age
+  - Primary security control is file permissions (`0600`); `created_at` is enforceable against casual tampering but not a motivated attacker with local filesystem access (this is out of scope for threat model — if they have file access they already have the refresh token)
+  - **Advanced (future):** HMAC-sign `created_at` with a machine-local secret key to resist casual tampering. Stdlib-only (`hmac` + `hashlib`), auto-generated key in `~/.config/tokentoss/.session_key`. Doesn't protect against attacker with full filesystem access, so low incremental value.
 - **Priority:** Medium — security/UX concern, should address before v0.1.0 or at latest v0.2.0
 
 ---
