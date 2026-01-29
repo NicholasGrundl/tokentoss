@@ -29,6 +29,7 @@ class TokenData:
     expiry: str  # ISO format datetime string
     scopes: list[str]
     user_email: str | None = None
+    created_at: str | None = None  # ISO format datetime string
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -44,7 +45,15 @@ class TokenData:
             expiry=data["expiry"],
             scopes=data.get("scopes", []),
             user_email=data.get("user_email"),
+            created_at=data.get("created_at"),
         )
+
+    @property
+    def created_at_datetime(self) -> datetime | None:
+        """Parse created_at string to datetime, or None if not set."""
+        if self.created_at is None:
+            return None
+        return datetime.fromisoformat(self.created_at.replace("Z", "+00:00"))
 
     @property
     def expiry_datetime(self) -> datetime:
