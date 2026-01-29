@@ -114,6 +114,51 @@ class TestConfigureWidgetSubmit:
         assert widget.configured is False
 
 
+class TestConfigureWidgetProjectId:
+    def test_passes_project_id(self, mocker, tmp_path):
+        dest = tmp_path / "client_secrets.json"
+        mock_configure = mocker.patch(
+            "tokentoss.configure_widget.configure",
+            return_value=dest,
+        )
+
+        widget = ConfigureWidget()
+        widget.client_id = "test-id"
+        widget.client_secret = "test-secret"
+        widget.project_id = "my-project"
+        widget._submit = 1
+
+        mock_configure.assert_called_once_with(
+            client_id="test-id",
+            client_secret="test-secret",
+            project_id="my-project",
+        )
+        assert widget.configured is True
+
+    def test_works_without_project_id(self, mocker, tmp_path):
+        dest = tmp_path / "client_secrets.json"
+        mock_configure = mocker.patch(
+            "tokentoss.configure_widget.configure",
+            return_value=dest,
+        )
+
+        widget = ConfigureWidget()
+        widget.client_id = "test-id"
+        widget.client_secret = "test-secret"
+        widget._submit = 1
+
+        mock_configure.assert_called_once_with(
+            client_id="test-id",
+            client_secret="test-secret",
+            project_id=None,
+        )
+        assert widget.configured is True
+
+    def test_default_project_id_traitlet(self):
+        widget = ConfigureWidget()
+        assert widget.project_id == ""
+
+
 class TestConfigureWidgetImport:
     def test_lazy_import_from_package(self):
         import tokentoss
