@@ -70,4 +70,8 @@ def __getattr__(name: str):
         from .client import IAPClient
 
         return IAPClient
+    if name == "ConfigureWidget":
+        from .configure_widget import ConfigureWidget
+
+        return ConfigureWidget
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
