@@ -1,9 +1,3 @@
-# Testing
-
-1. Lets replace unittest patch and Mock with pytest-mock
-- github repo: https://github.com/pytest-dev/pytest-mock
-- docs: https://pytest-mock.readthedocs.io/en/latest/
-
 # Package
 
 
