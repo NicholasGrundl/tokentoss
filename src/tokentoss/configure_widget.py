@@ -240,7 +240,12 @@ class ConfigureWidget(anywidget.AnyWidget):
             return
 
         try:
-            path = configure(client_id=client_id, client_secret=client_secret)
+            project_id = self.project_id.strip() or None
+            path = configure(
+                client_id=client_id,
+                client_secret=client_secret,
+                project_id=project_id,
+            )
             self.status = f"Configured! Saved to {path}"
             self.configured = True
         except Exception as e:
