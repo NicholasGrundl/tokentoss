@@ -251,11 +251,10 @@ function render({ model, el }) {
         <button class="tokentoss-manual-submit">Submit</button>
     `;
 
-    // Sign-out link
-    const signOutLink = document.createElement('a');
-    signOutLink.href = '#';
-    signOutLink.className = 'tokentoss-signout';
-    signOutLink.textContent = 'Sign out';
+    // Sign-out button
+    const signOutButton = document.createElement('button');
+    signOutButton.className = 'tokentoss-signout';
+    signOutButton.textContent = 'Sign out';
 
     // Error display
     const errorEl = document.createElement('div');
