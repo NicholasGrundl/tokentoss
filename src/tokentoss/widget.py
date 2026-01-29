@@ -642,6 +642,12 @@ class GoogleAuthWidget(anywidget.AnyWidget):
         if not self._callback_server:
             return
 
+        logger.debug(
+            "Checking callback: port=%s, received=%s",
+            self._callback_server.port,
+            self._callback_server.callback_received,
+        )
+
         if self._callback_server.check_callback():
             if self._callback_server.error:
                 self.error = f"Authentication error: {self._callback_server.error}"
@@ -665,9 +671,8 @@ class GoogleAuthWidget(anywidget.AnyWidget):
                 self.status = "Click to sign in"
                 self._code_verifier = None
 
-            # Stop and reset server
-            self._callback_server.stop()
-            self._try_start_server()
+            # Reset state but keep server alive on same port
+            self._callback_server.reset()
         else:
             # Callback not received - show manual input
             self.show_manual_input = True
