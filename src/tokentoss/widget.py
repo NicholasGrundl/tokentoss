@@ -300,8 +300,7 @@ function render({ model, el }) {
     });
 
     // Handle sign-out click
-    signOutLink.addEventListener('click', (e) => {
-        e.preventDefault();
+    signOutButton.addEventListener('click', () => {
         model.send({ type: 'sign_out' });
     });
 
