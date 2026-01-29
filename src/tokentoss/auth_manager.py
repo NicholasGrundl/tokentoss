@@ -393,6 +393,7 @@ class AuthManager:
                 if isinstance(self._token_data.scopes, list)
                 else self._token_data.scopes,
                 user_email=user_email,
+                created_at=self._token_data.created_at,
             )
 
             # Update credentials and save
