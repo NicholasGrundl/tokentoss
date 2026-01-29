@@ -148,9 +148,11 @@ class CallbackServer:
             self._thread = threading.Thread(target=self._serve, daemon=True)
             self._thread.start()
 
+            logger.debug("Callback server started on port %s", self.port)
             return True
 
         except Exception:
+            logger.warning("Failed to start callback server", exc_info=True)
             self.port = None
             return False
 
