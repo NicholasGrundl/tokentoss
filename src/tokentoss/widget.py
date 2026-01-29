@@ -165,6 +165,7 @@ class CallbackServer:
         """Stop the callback server."""
         server = self._server
         if server:
+            logger.debug("Stopping callback server on port %s", self.port)
             # Copy results from server
             self.auth_code = server.auth_code
             self.state = server.state
