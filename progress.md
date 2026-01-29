@@ -204,9 +204,8 @@ uv run jupyter lab
 ## When You Return
 
 1. Read this file
-2. Check task status: Phases 2 and 3 are independent, can do either
-3. For Phase 2: Look at `widget.py`, implement anywidget with OAuth popup
-4. For Phase 3: Look at `client.py`, implement IAPClient with credential chain
-5. Full design details in `_blueprint/plan/tokentoss_implementation.md`
+2. Check task status: Phase 3 (IAPClient) is the only remaining phase
+3. For Phase 3: Look at `client.py`, implement IAPClient with credential chain
+4. Full design details in `_blueprint/plan/tokentoss_implementation.md`
 
-**Recommendation:** Start with Phase 2 (widget) since it's the user-facing component and more complex. Phase 3 (client) is straightforward HTTP wrapper.
+**Next:** Implement Phase 3 (IAPClient) - HTTP client with auto ID token injection and credential discovery chain.
