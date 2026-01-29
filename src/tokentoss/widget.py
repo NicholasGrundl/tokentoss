@@ -286,10 +286,10 @@ function render({ model, el }) {
         if (isAuthenticated) {
             button.style.display = 'none';
             manualSection.style.display = 'none';
-            signOutLink.style.display = 'inline';
+            signOutButton.style.display = 'inline-block';
         } else {
             button.style.display = 'inline-flex';
-            signOutLink.style.display = 'none';
+            signOutButton.style.display = 'none';
             manualSection.style.display = showManual ? 'block' : 'none';
         }
     }
