@@ -73,6 +73,7 @@ select = [
 ]
 ignore = [
     "E501",   # line length handled by formatter
+    "SIM105", # contextlib.suppress — prefer explicit try/except/pass
 ]
 
 [tool.ruff.lint.isort]
