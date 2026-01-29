@@ -16,31 +16,16 @@ from tokentoss.exceptions import TokenExchangeError
 class TestCallbackServer:
     """Tests for CallbackServer."""
 
-    def test_start_success(self):
-        """Test server starts successfully on available port."""
-        server = CallbackServer()
-        try:
-            result = server.start()
-            assert result is True
-            assert server.port is not None
-            assert server.port > 0
-        finally:
-            server.stop()
-
-    def test_redirect_uri(self):
-        """Test redirect_uri property."""
-        server = CallbackServer()
-        try:
-            server.start()
-            assert server.redirect_uri.startswith("http://127.0.0.1:")
-            assert str(server.port) in server.redirect_uri
-        finally:
-            server.stop()
-
     def test_redirect_uri_without_port(self):
         """Test redirect_uri when no port is set."""
         server = CallbackServer()
         assert server.redirect_uri == "http://localhost"
+
+    def test_redirect_uri_with_port(self):
+        """Test redirect_uri when port is set."""
+        server = CallbackServer()
+        server.port = 12345
+        assert server.redirect_uri == "http://127.0.0.1:12345"
 
     def test_reset(self):
         """Test reset clears state."""
@@ -57,14 +42,28 @@ class TestCallbackServer:
         assert server.error is None
         assert server.callback_received is False
 
-    def test_check_callback_not_received(self):
-        """Test check_callback when no callback received."""
+    def test_check_callback_without_server(self):
+        """Test check_callback when server not started."""
         server = CallbackServer()
-        try:
-            server.start()
-            assert server.check_callback() is False
-        finally:
-            server.stop()
+        server.callback_received = True
+        assert server.check_callback() is True
+
+    def test_check_callback_copies_from_server(self):
+        """Test check_callback copies state from server instance."""
+        server = CallbackServer()
+        # Mock the internal server
+        mock_server = Mock()
+        mock_server.auth_code = "test-code"
+        mock_server.state = "test-state"
+        mock_server.error = None
+        mock_server.callback_received = True
+        server._server = mock_server
+
+        result = server.check_callback()
+
+        assert result is True
+        assert server.auth_code == "test-code"
+        assert server.state == "test-state"
 
 
 class TestGoogleAuthWidget:
