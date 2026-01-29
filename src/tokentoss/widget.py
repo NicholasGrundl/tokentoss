@@ -145,28 +145,27 @@ class CallbackServer:
             return False
 
     def _serve(self):
-        """Serve requests until callback is received or server is stopped."""
+        """Serve requests using serve_forever (stoppable via shutdown)."""
         if self._server:
-            self._server.timeout = 0.5  # Short timeout for responsiveness
-            while self._server and not self._server.callback_received:
-                self._server.handle_request()
+            self._server.serve_forever(poll_interval=0.5)
 
     def stop(self):
         """Stop the callback server."""
-        if self._server:
+        server = self._server
+        if server:
             # Copy results from server
-            self.auth_code = self._server.auth_code
-            self.state = self._server.state
-            self.error = self._server.error
-            self.callback_received = self._server.callback_received
+            self.auth_code = server.auth_code
+            self.state = server.state
+            self.error = server.error
+            self.callback_received = server.callback_received
 
-            try:
-                self._server.shutdown()
-            except Exception:
-                pass
+            # shutdown() signals serve_forever() to exit
+            server.shutdown()
             self._server = None
 
-        self._thread = None
+        if self._thread:
+            self._thread.join(timeout=2)
+            self._thread = None
 
     def check_callback(self) -> bool:
         """Check if callback has been received.
