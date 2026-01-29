@@ -99,6 +99,7 @@ function render({ model, el }) {
     button.addEventListener('click', () => {
         model.set('client_id', idInput.value);
         model.set('client_secret', secretInput.value);
+        model.set('project_id', projectInput.value);
         model.set('_submit', model.get('_submit') + 1);
         model.save_changes();
     });
