@@ -26,6 +26,7 @@ from .exceptions import (
     InsecureFilePermissionsWarning,
 )
 from .storage import FileStorage, MemoryStorage, TokenData
+from .setup import configure, configure_from_credentials, configure_from_file, get_config_path
 
 if TYPE_CHECKING:
     from google.oauth2.credentials import Credentials
@@ -50,6 +51,11 @@ __all__ = [
     "FileStorage",
     "MemoryStorage",
     "TokenData",
+    # Setup
+    "configure",
+    "configure_from_credentials",
+    "configure_from_file",
+    "get_config_path",
     # Exceptions
     "TokenTossError",
     "NoCredentialsError",
