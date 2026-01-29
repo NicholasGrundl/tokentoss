@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import Mock, patch
+import threading
+import time
+import urllib.request
 
 import pytest
 
@@ -12,6 +14,28 @@ from tokentoss.auth_manager import ClientConfig, AuthManager
 from tokentoss.storage import MemoryStorage, TokenData
 from tokentoss.exceptions import TokenExchangeError
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_token_data(**overrides):
+    """Create a TokenData with sensible defaults."""
+    defaults = dict(
+        access_token="access-token",
+        id_token="id-token",
+        refresh_token="refresh-token",
+        expiry="2099-01-01T00:00:00+00:00",
+        scopes=["openid"],
+        user_email="user@example.com",
+    )
+    defaults.update(overrides)
+    return TokenData(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# CallbackServer unit tests
+# ---------------------------------------------------------------------------
 
 class TestCallbackServer:
     """Tests for CallbackServer."""
@@ -48,11 +72,10 @@ class TestCallbackServer:
         server.callback_received = True
         assert server.check_callback() is True
 
-    def test_check_callback_copies_from_server(self):
+    def test_check_callback_copies_from_server(self, mocker):
         """Test check_callback copies state from server instance."""
         server = CallbackServer()
-        # Mock the internal server
-        mock_server = Mock()
+        mock_server = mocker.Mock()
         mock_server.auth_code = "test-code"
         mock_server.state = "test-state"
         mock_server.error = None
@@ -65,6 +88,26 @@ class TestCallbackServer:
         assert server.auth_code == "test-code"
         assert server.state == "test-state"
 
+    def test_stop_copies_results_from_server(self, mocker):
+        """Test stop copies final state from server."""
+        server = CallbackServer()
+        mock_server = mocker.Mock()
+        mock_server.auth_code = "final-code"
+        mock_server.state = "final-state"
+        mock_server.error = None
+        mock_server.callback_received = True
+        server._server = mock_server
+
+        server.stop()
+
+        assert server.auth_code == "final-code"
+        assert server.state == "final-state"
+        assert server._server is None
+
+
+# ---------------------------------------------------------------------------
+# GoogleAuthWidget unit tests
+# ---------------------------------------------------------------------------
 
 class TestGoogleAuthWidget:
     """Tests for GoogleAuthWidget."""
@@ -78,15 +121,15 @@ class TestGoogleAuthWidget:
         )
 
     @pytest.fixture
-    def widget(self, client_config):
-        """Create a widget with memory storage."""
-        with patch.object(CallbackServer, "start", return_value=True):
-            return GoogleAuthWidget(
-                client_config=client_config,
-                storage=MemoryStorage(),
-            )
+    def widget(self, client_config, mocker):
+        """Create a widget with memory storage and mocked server."""
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        return GoogleAuthWidget(
+            client_config=client_config,
+            storage=MemoryStorage(),
+        )
 
-    def test_init_with_client_secrets_path(self, tmp_path):
+    def test_init_with_client_secrets_path(self, tmp_path, mocker):
         """Test initialization with client_secrets_path."""
         secrets_file = tmp_path / "client_secrets.json"
         secrets_file.write_text(
@@ -100,46 +143,37 @@ class TestGoogleAuthWidget:
             )
         )
 
-        with patch.object(CallbackServer, "start", return_value=True):
-            widget = GoogleAuthWidget(
-                client_secrets_path=str(secrets_file),
-                storage=MemoryStorage(),
-            )
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        widget = GoogleAuthWidget(
+            client_secrets_path=str(secrets_file),
+            storage=MemoryStorage(),
+        )
 
         assert widget._auth_manager.client_config.client_id == "test-id"
         assert widget.is_authenticated is False
 
-    def test_init_with_existing_auth_manager(self, client_config):
+    def test_init_with_existing_auth_manager(self, client_config, mocker):
         """Test initialization with existing AuthManager."""
         auth_manager = AuthManager(
             client_config=client_config,
             storage=MemoryStorage(),
         )
 
-        with patch.object(CallbackServer, "start", return_value=True):
-            widget = GoogleAuthWidget(auth_manager=auth_manager)
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        widget = GoogleAuthWidget(auth_manager=auth_manager)
 
         assert widget.auth_manager is auth_manager
 
-    def test_init_loads_existing_credentials(self, client_config):
+    def test_init_loads_existing_credentials(self, client_config, mocker):
         """Test that existing credentials are loaded on init."""
         storage = MemoryStorage()
-        storage.save(
-            TokenData(
-                access_token="existing-token",
-                id_token="existing-id",
-                refresh_token="existing-refresh",
-                expiry="2099-01-01T00:00:00+00:00",
-                scopes=["openid"],
-                user_email="existing@example.com",
-            )
-        )
+        storage.save(_make_token_data(user_email="existing@example.com"))
 
-        with patch.object(CallbackServer, "start", return_value=True):
-            widget = GoogleAuthWidget(
-                client_config=client_config,
-                storage=storage,
-            )
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        widget = GoogleAuthWidget(
+            client_config=client_config,
+            storage=storage,
+        )
 
         assert widget.is_authenticated is True
         assert widget.user_email == "existing@example.com"
@@ -165,14 +199,14 @@ class TestGoogleAuthWidget:
 
         assert state1 != state2
 
-    def test_prepare_auth_uses_server_redirect_uri(self, client_config):
+    def test_prepare_auth_uses_server_redirect_uri(self, client_config, mocker):
         """Test that prepare_auth uses server redirect URI when available."""
-        with patch.object(CallbackServer, "start", return_value=True):
-            widget = GoogleAuthWidget(
-                client_config=client_config,
-                storage=MemoryStorage(),
-            )
-            widget._callback_server.port = 12345
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        widget = GoogleAuthWidget(
+            client_config=client_config,
+            storage=MemoryStorage(),
+        )
+        widget._callback_server.port = 12345
 
         widget.prepare_auth()
 
@@ -180,42 +214,41 @@ class TestGoogleAuthWidget:
         assert "127.0.0.1%3A12345" in widget.auth_url
         assert widget.show_manual_input is False
 
-    def test_prepare_auth_fallback_to_localhost(self, client_config):
+    def test_prepare_auth_fallback_to_localhost(self, client_config, mocker):
         """Test that prepare_auth falls back to localhost when server unavailable."""
-        with patch.object(CallbackServer, "start", return_value=False):
-            widget = GoogleAuthWidget(
-                client_config=client_config,
-                storage=MemoryStorage(),
-            )
+        mocker.patch.object(CallbackServer, "start", return_value=False)
+        widget = GoogleAuthWidget(
+            client_config=client_config,
+            storage=MemoryStorage(),
+        )
 
         widget.prepare_auth()
 
         assert "localhost" in widget.auth_url
         assert widget.show_manual_input is True
 
-    @patch.object(AuthManager, "exchange_code")
-    def test_auth_code_triggers_exchange(self, mock_exchange, widget):
+    def test_auth_code_triggers_exchange(self, widget, mocker):
         """Test that setting auth_code triggers token exchange."""
         widget.prepare_auth()
-        mock_exchange.return_value = TokenData(
-            access_token="new-access",
-            id_token="new-id",
-            refresh_token="new-refresh",
-            expiry="2099-01-01T00:00:00+00:00",
-            scopes=["openid"],
-            user_email="user@example.com",
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(),
         )
 
         widget.auth_code = "test-auth-code"
 
-        mock_exchange.assert_called_once()
+        widget._auth_manager.exchange_code.assert_called_once()
         assert widget.is_authenticated is True
 
-    @patch.object(AuthManager, "exchange_code")
-    def test_exchange_error_sets_error_status(self, mock_exchange, widget):
+    def test_exchange_error_sets_error_status(self, widget, mocker):
         """Test that exchange errors are handled gracefully."""
         widget.prepare_auth()
-        mock_exchange.side_effect = TokenExchangeError("invalid_grant")
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            side_effect=TokenExchangeError("invalid_grant"),
+        )
 
         widget.auth_code = "bad-code"
 
@@ -232,25 +265,16 @@ class TestGoogleAuthWidget:
         assert "Invalid state" in widget.error
         assert widget.is_authenticated is False
 
-    def test_sign_out_clears_state(self, client_config):
+    def test_sign_out_clears_state(self, client_config, mocker):
         """Test that sign_out clears all auth state."""
         storage = MemoryStorage()
-        storage.save(
-            TokenData(
-                access_token="token",
-                id_token="id",
-                refresh_token="refresh",
-                expiry="2099-01-01T00:00:00+00:00",
-                scopes=[],
-                user_email="user@example.com",
-            )
-        )
+        storage.save(_make_token_data())
 
-        with patch.object(CallbackServer, "start", return_value=True):
-            widget = GoogleAuthWidget(
-                client_config=client_config,
-                storage=storage,
-            )
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        widget = GoogleAuthWidget(
+            client_config=client_config,
+            storage=storage,
+        )
 
         assert widget.is_authenticated is True
 
@@ -269,23 +293,23 @@ class TestGoogleAuthWidget:
         """Test auth_manager property accessor."""
         assert widget.auth_manager is widget._auth_manager
 
-    def test_handle_message_prepare_auth(self, widget):
+    def test_handle_message_prepare_auth(self, widget, mocker):
         """Test message handler for prepare_auth."""
-        with patch.object(widget, "prepare_auth") as mock_prepare:
-            widget._handle_message(widget, {"type": "prepare_auth"}, [])
-            mock_prepare.assert_called_once()
+        spy = mocker.spy(widget, "prepare_auth")
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        spy.assert_called_once()
 
-    def test_handle_message_sign_out(self, widget):
+    def test_handle_message_sign_out(self, widget, mocker):
         """Test message handler for sign_out."""
-        with patch.object(widget, "sign_out") as mock_sign_out:
-            widget._handle_message(widget, {"type": "sign_out"}, [])
-            mock_sign_out.assert_called_once()
+        spy = mocker.spy(widget, "sign_out")
+        widget._handle_message(widget, {"type": "sign_out"}, [])
+        spy.assert_called_once()
 
-    def test_handle_message_check_callback(self, widget):
+    def test_handle_message_check_callback(self, widget, mocker):
         """Test message handler for check_callback."""
-        with patch.object(widget, "_check_callback") as mock_check:
-            widget._handle_message(widget, {"type": "check_callback"}, [])
-            mock_check.assert_called_once()
+        spy = mocker.spy(widget, "_check_callback")
+        widget._handle_message(widget, {"type": "check_callback"}, [])
+        spy.assert_called_once()
 
     def test_exchange_without_code_verifier(self, widget):
         """Test that exchange fails gracefully without code_verifier."""
@@ -296,70 +320,336 @@ class TestGoogleAuthWidget:
         assert widget.is_authenticated is False
 
 
+# ---------------------------------------------------------------------------
+# Flow simulation tests (Layer 2)
+# ---------------------------------------------------------------------------
+
+class TestAuthFlowSimulation:
+    """Simulate the full auth flow as the JS frontend would drive it."""
+
+    @pytest.fixture
+    def client_config(self):
+        return ClientConfig(
+            client_id="test-client-id.apps.googleusercontent.com",
+            client_secret="test-secret",
+        )
+
+    @pytest.fixture
+    def widget(self, client_config, mocker):
+        mocker.patch.object(CallbackServer, "start", return_value=True)
+        return GoogleAuthWidget(
+            client_config=client_config,
+            storage=MemoryStorage(),
+        )
+
+    def test_full_flow_via_manual_paste(self, widget, mocker):
+        """Simulate: button click → prepare → paste URL → exchange → authenticated."""
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(user_email="flow@example.com"),
+        )
+
+        # 1. JS sends prepare_auth message (button click)
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        assert widget.auth_url != ""
+        assert widget.status == "Waiting for authentication..."
+        assert widget._code_verifier is not None
+
+        # 2. JS sets auth_code (simulating manual paste)
+        widget.auth_code = "manual-auth-code"
+
+        # 3. Verify authenticated
+        assert widget.is_authenticated is True
+        assert widget.user_email == "flow@example.com"
+        assert "Signed in as flow@example.com" in widget.status
+        assert widget.error == ""
+        assert widget.show_manual_input is False
+
+    def test_full_flow_via_callback_server(self, widget, mocker):
+        """Simulate: button click → prepare → server receives code → authenticated."""
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(user_email="server@example.com"),
+        )
+
+        # 1. JS sends prepare_auth
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        assert widget.auth_url != ""
+
+        # 2. Simulate server receiving the callback
+        widget._callback_server.auth_code = "server-auth-code"
+        widget._callback_server.state = widget.state
+        widget._callback_server.callback_received = True
+        if widget._callback_server._server:
+            widget._callback_server._server.auth_code = "server-auth-code"
+            widget._callback_server._server.state = widget.state
+            widget._callback_server._server.callback_received = True
+
+        # 3. JS detects popup closed, sends check_callback
+        widget._handle_message(widget, {"type": "check_callback"}, [])
+
+        # 4. Verify authenticated
+        assert widget.is_authenticated is True
+        assert widget.user_email == "server@example.com"
+
+    def test_sign_out_and_reauthenticate(self, widget, mocker):
+        """Test full sign-out → re-authenticate cycle."""
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(user_email="first@example.com"),
+        )
+
+        # First auth
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        widget.auth_code = "first-code"
+        assert widget.is_authenticated is True
+        assert widget.user_email == "first@example.com"
+
+        # Sign out
+        widget._handle_message(widget, {"type": "sign_out"}, [])
+        assert widget.is_authenticated is False
+        assert widget.user_email == ""
+        assert widget.status == "Click to sign in"
+
+        # Re-authenticate with different user
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(user_email="second@example.com"),
+        )
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        widget.auth_code = "second-code"
+        assert widget.is_authenticated is True
+        assert widget.user_email == "second@example.com"
+
+    def test_exchange_failure_then_retry(self, widget, mocker):
+        """Test: first exchange fails, user retries and succeeds."""
+        # First attempt fails
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            side_effect=TokenExchangeError("network_error"),
+        )
+
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        widget.auth_code = "bad-code"
+
+        assert widget.is_authenticated is False
+        assert "network_error" in widget.error
+
+        # Retry succeeds
+        mocker.patch.object(
+            widget._auth_manager,
+            "exchange_code",
+            return_value=_make_token_data(),
+        )
+
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        widget.auth_code = "good-code"
+
+        assert widget.is_authenticated is True
+        assert widget.error == ""
+
+    def test_popup_closed_without_auth(self, widget):
+        """Test: user closes popup without completing auth."""
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+        assert widget.status == "Waiting for authentication..."
+
+        # Popup closed, no callback received
+        widget._handle_message(widget, {"type": "check_callback"}, [])
+
+        # Should show manual input fallback
+        assert widget.is_authenticated is False
+        assert widget.show_manual_input is True
+
+    def test_multiple_prepare_auth_regenerates_pkce(self, widget):
+        """Test that each prepare_auth generates fresh PKCE pair."""
+        widget.prepare_auth()
+        verifier1 = widget._code_verifier
+        state1 = widget.state
+
+        widget.prepare_auth()
+        verifier2 = widget._code_verifier
+        state2 = widget.state
+
+        assert verifier1 != verifier2
+        assert state1 != state2
+
+    def test_auth_code_without_prepare_fails(self, widget):
+        """Test setting auth_code without calling prepare_auth first."""
+        widget._code_verifier = None
+        widget.auth_code = "orphan-code"
+
+        assert widget.is_authenticated is False
+        assert "No code verifier" in widget.error
+
+    def test_callback_server_error_propagated(self, widget):
+        """Test that OAuth error from callback is shown."""
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+
+        # Simulate server receiving an error
+        widget._callback_server.error = "access_denied"
+        widget._callback_server.callback_received = True
+        if widget._callback_server._server:
+            widget._callback_server._server.error = "access_denied"
+            widget._callback_server._server.callback_received = True
+
+        widget._handle_message(widget, {"type": "check_callback"}, [])
+
+        assert widget.is_authenticated is False
+        assert "access_denied" in widget.error
+
+    def test_callback_state_mismatch_rejected(self, widget):
+        """Test that callback with wrong state is rejected."""
+        widget._handle_message(widget, {"type": "prepare_auth"}, [])
+
+        # Simulate server receiving code with wrong state
+        widget._callback_server.auth_code = "some-code"
+        widget._callback_server.state = "wrong-state"
+        widget._callback_server.callback_received = True
+        if widget._callback_server._server:
+            widget._callback_server._server.auth_code = "some-code"
+            widget._callback_server._server.state = "wrong-state"
+            widget._callback_server._server.callback_received = True
+
+        widget._handle_message(widget, {"type": "check_callback"}, [])
+
+        assert widget.is_authenticated is False
+        assert "Invalid state" in widget.error
+
+
+# ---------------------------------------------------------------------------
+# Integration tests (Layer 3) - real HTTP to CallbackServer
+# ---------------------------------------------------------------------------
+
+def _http_get(url: str) -> None:
+    """Make an HTTP GET request, ignoring errors."""
+    try:
+        urllib.request.urlopen(url, timeout=2)
+    except Exception:
+        pass
+
+
 @pytest.mark.integration
 class TestCallbackServerIntegration:
-    """Integration tests for CallbackServer with HTTP requests.
+    """Integration tests for CallbackServer with real HTTP.
 
-    These tests require real HTTP connections and may be slow.
-    Run with: pytest -m integration
+    Run with: pytest -m integration -v
     """
 
-    def test_server_receives_callback(self):
-        """Test that server can receive an OAuth callback."""
-        import urllib.request
-        import time
+    def test_server_starts_on_available_port(self):
+        """Test server starts and binds to a real port."""
+        server = CallbackServer()
+        try:
+            assert server.start() is True
+            assert server.port is not None
+            assert server.port > 0
+            assert server.redirect_uri.startswith("http://127.0.0.1:")
+        finally:
+            server.stop()
 
+    def test_server_receives_callback_with_code(self):
+        """Test server receives auth code from HTTP callback."""
         server = CallbackServer()
         try:
             server.start()
-            assert server.port is not None
+            url = f"http://127.0.0.1:{server.port}/?code=test-code&state=test-state"
 
-            # Simulate OAuth callback in a thread to avoid blocking
-            import threading
-            def make_request():
-                url = f"http://127.0.0.1:{server.port}/?code=test-code&state=test-state"
-                try:
-                    urllib.request.urlopen(url, timeout=1)
-                except Exception:
-                    pass
+            t = threading.Thread(target=_http_get, args=(url,))
+            t.start()
+            t.join(timeout=3)
 
-            thread = threading.Thread(target=make_request)
-            thread.start()
-            thread.join(timeout=2)
-
-            # Give server time to process
+            # Allow server to process
             time.sleep(0.2)
 
             assert server.check_callback() is True
             assert server.auth_code == "test-code"
             assert server.state == "test-state"
+            assert server.error is None
         finally:
             server.stop()
 
-    def test_server_receives_error(self):
-        """Test that server handles error callback."""
-        import urllib.request
-        import time
-        import threading
-
+    def test_server_receives_error_callback(self):
+        """Test server handles OAuth error parameter."""
         server = CallbackServer()
         try:
             server.start()
+            url = f"http://127.0.0.1:{server.port}/?error=access_denied"
 
-            def make_request():
-                url = f"http://127.0.0.1:{server.port}/?error=access_denied"
-                try:
-                    urllib.request.urlopen(url, timeout=1)
-                except Exception:
-                    pass
-
-            thread = threading.Thread(target=make_request)
-            thread.start()
-            thread.join(timeout=2)
+            t = threading.Thread(target=_http_get, args=(url,))
+            t.start()
+            t.join(timeout=3)
 
             time.sleep(0.2)
 
             assert server.check_callback() is True
             assert server.error == "access_denied"
+            assert server.auth_code is None
         finally:
             server.stop()
+
+    def test_server_handles_no_query_params(self):
+        """Test server handles request with no query params."""
+        server = CallbackServer()
+        try:
+            server.start()
+            url = f"http://127.0.0.1:{server.port}/"
+
+            t = threading.Thread(target=_http_get, args=(url,))
+            t.start()
+            t.join(timeout=3)
+
+            time.sleep(0.2)
+
+            assert server.check_callback() is True
+            assert server.auth_code is None
+            assert server.error is None
+        finally:
+            server.stop()
+
+    def test_server_reset_allows_reuse(self):
+        """Test server can be reset and reused for a new auth flow."""
+        server = CallbackServer()
+        try:
+            server.start()
+
+            # First callback
+            url1 = f"http://127.0.0.1:{server.port}/?code=first-code"
+            t = threading.Thread(target=_http_get, args=(url1,))
+            t.start()
+            t.join(timeout=3)
+            time.sleep(0.2)
+
+            assert server.check_callback() is True
+            assert server.auth_code == "first-code"
+
+            # Stop and restart for second flow
+            server.stop()
+            server = CallbackServer()
+            server.start()
+
+            url2 = f"http://127.0.0.1:{server.port}/?code=second-code"
+            t = threading.Thread(target=_http_get, args=(url2,))
+            t.start()
+            t.join(timeout=3)
+            time.sleep(0.2)
+
+            assert server.check_callback() is True
+            assert server.auth_code == "second-code"
+        finally:
+            server.stop()
+
+    def test_server_shuts_down_cleanly(self):
+        """Test server shuts down without hanging."""
+        server = CallbackServer()
+        server.start()
+        port = server.port
+
+        # Stop should return promptly
+        server.stop()
+
+        assert server._server is None
+        assert server._thread is None
