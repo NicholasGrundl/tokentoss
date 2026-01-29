@@ -296,29 +296,39 @@ class TestGoogleAuthWidget:
         assert widget.is_authenticated is False
 
 
+@pytest.mark.integration
 class TestCallbackServerIntegration:
-    """Integration tests for CallbackServer with HTTP requests."""
+    """Integration tests for CallbackServer with HTTP requests.
+
+    These tests require real HTTP connections and may be slow.
+    Run with: pytest -m integration
+    """
 
     def test_server_receives_callback(self):
         """Test that server can receive an OAuth callback."""
         import urllib.request
+        import time
 
         server = CallbackServer()
         try:
             server.start()
             assert server.port is not None
 
-            # Simulate OAuth callback
-            url = f"http://127.0.0.1:{server.port}/?code=test-code&state=test-state"
-            try:
-                urllib.request.urlopen(url, timeout=2)
-            except Exception:
-                pass  # May fail due to timeout, but callback should be received
+            # Simulate OAuth callback in a thread to avoid blocking
+            import threading
+            def make_request():
+                url = f"http://127.0.0.1:{server.port}/?code=test-code&state=test-state"
+                try:
+                    urllib.request.urlopen(url, timeout=1)
+                except Exception:
+                    pass
+
+            thread = threading.Thread(target=make_request)
+            thread.start()
+            thread.join(timeout=2)
 
             # Give server time to process
-            import time
-
-            time.sleep(0.1)
+            time.sleep(0.2)
 
             assert server.check_callback() is True
             assert server.auth_code == "test-code"
@@ -329,20 +339,25 @@ class TestCallbackServerIntegration:
     def test_server_receives_error(self):
         """Test that server handles error callback."""
         import urllib.request
+        import time
+        import threading
 
         server = CallbackServer()
         try:
             server.start()
 
-            url = f"http://127.0.0.1:{server.port}/?error=access_denied"
-            try:
-                urllib.request.urlopen(url, timeout=2)
-            except Exception:
-                pass
+            def make_request():
+                url = f"http://127.0.0.1:{server.port}/?error=access_denied"
+                try:
+                    urllib.request.urlopen(url, timeout=1)
+                except Exception:
+                    pass
 
-            import time
+            thread = threading.Thread(target=make_request)
+            thread.start()
+            thread.join(timeout=2)
 
-            time.sleep(0.1)
+            time.sleep(0.2)
 
             assert server.check_callback() is True
             assert server.error == "access_denied"
