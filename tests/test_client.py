@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock
 
 import pytest
 import requests
@@ -11,6 +10,7 @@ import requests
 from tokentoss.client import IAPClient
 from tokentoss.exceptions import NoCredentialsError
 from tokentoss.storage import TokenData
+
 
 # -- Helpers --
 
@@ -34,12 +34,12 @@ def _make_expired_token_data(**kwargs) -> TokenData:
     return _make_token_data(expiry="2020-01-01T00:00:00+00:00", **kwargs)
 
 
-def _mock_response(status_code: int = 200, json_data: dict | None = None) -> MagicMock:
+def _mock_response(mocker, status_code: int = 200, json_data: dict | None = None):
     """Create a mock requests.Response."""
-    resp = MagicMock(spec=requests.Response)
+    resp = mocker.MagicMock(spec=requests.Response)
     resp.status_code = status_code
     resp.json.return_value = json_data or {}
-    resp.raise_for_status = MagicMock()
+    resp.raise_for_status = mocker.MagicMock()
     if status_code >= 400:
         resp.raise_for_status.side_effect = requests.HTTPError(response=resp)
     return resp
@@ -57,8 +57,8 @@ class TestIAPClientInit:
         client = IAPClient()
         assert client.base_url is None
 
-    def test_auth_manager_stored(self):
-        mock_am = MagicMock()
+    def test_auth_manager_stored(self, mocker):
+        mock_am = mocker.MagicMock()
         client = IAPClient(auth_manager=mock_am)
         assert client._auth_manager is mock_am
 
@@ -105,16 +105,16 @@ class TestBuildUrl:
 
 
 class TestGetIdToken:
-    def test_from_auth_manager(self):
-        mock_am = MagicMock()
+    def test_from_auth_manager(self, mocker):
+        mock_am = mocker.MagicMock()
         mock_am.id_token = "am-id-token"
         client = IAPClient(auth_manager=mock_am)
 
         token = client._get_id_token()
         assert token == "am-id-token"
 
-    def test_from_auth_manager_force_refresh(self):
-        mock_am = MagicMock()
+    def test_from_auth_manager_force_refresh(self, mocker):
+        mock_am = mocker.MagicMock()
         mock_am.id_token = "refreshed-token"
         client = IAPClient(auth_manager=mock_am)
 
@@ -125,7 +125,7 @@ class TestGetIdToken:
     def test_from_module_credentials(self, mocker):
         import tokentoss
 
-        mock_creds = MagicMock()
+        mock_creds = mocker.MagicMock()
         mock_creds.id_token = "module-id-token"
         mock_creds.expired = False
         mocker.patch.object(tokentoss, "CREDENTIALS", mock_creds)
@@ -137,7 +137,7 @@ class TestGetIdToken:
     def test_from_module_credentials_refreshes_when_expired(self, mocker):
         import tokentoss
 
-        mock_creds = MagicMock()
+        mock_creds = mocker.MagicMock()
         mock_creds.id_token = "refreshed-module-token"
         mock_creds.expired = True
         mocker.patch.object(tokentoss, "CREDENTIALS", mock_creds)
@@ -149,7 +149,7 @@ class TestGetIdToken:
 
     def test_from_storage(self, mocker):
         token_data = _make_token_data(id_token="stored-id-token")
-        mock_storage = MagicMock()
+        mock_storage = mocker.MagicMock()
         mock_storage.load.return_value = token_data
         mocker.patch("tokentoss.client.FileStorage", return_value=mock_storage)
         mocker.patch.object(__import__("tokentoss"), "CREDENTIALS", None)
@@ -171,7 +171,7 @@ class TestGetIdToken:
 
     def test_expired_storage_token_returns_none(self, mocker):
         token_data = _make_expired_token_data()
-        mock_storage = MagicMock()
+        mock_storage = mocker.MagicMock()
         mock_storage.load.return_value = token_data
         mocker.patch("tokentoss.client.FileStorage", return_value=mock_storage)
         mocker.patch.object(__import__("tokentoss"), "CREDENTIALS", None)
@@ -181,7 +181,7 @@ class TestGetIdToken:
             client._get_id_token()
 
     def test_no_credentials_raises(self, mocker):
-        mock_storage = MagicMock()
+        mock_storage = mocker.MagicMock()
         mock_storage.load.return_value = None
         mocker.patch("tokentoss.client.FileStorage", return_value=mock_storage)
         mocker.patch.object(__import__("tokentoss"), "CREDENTIALS", None)
@@ -191,7 +191,7 @@ class TestGetIdToken:
             client._get_id_token()
 
     def test_storage_error_falls_through(self, mocker):
-        mock_storage = MagicMock()
+        mock_storage = mocker.MagicMock()
         mock_storage.load.side_effect = Exception("corrupt file")
         mocker.patch("tokentoss.client.FileStorage", return_value=mock_storage)
         mocker.patch.object(__import__("tokentoss"), "CREDENTIALS", None)
@@ -208,14 +208,14 @@ class TestRequest:
     def _make_client_with_token(self, mocker, token="test-token"):
         """Create an IAPClient with mocked token discovery."""
         mocker.patch.object(IAPClient, "_get_id_token", return_value=token)
-        mock_session = MagicMock()
+        mock_session = mocker.MagicMock()
         client = IAPClient(base_url="https://example.com")
         client._session = mock_session
         return client, mock_session
 
     def test_adds_bearer_token(self, mocker):
         client, session = self._make_client_with_token(mocker, "my-token")
-        session.request.return_value = _mock_response(200)
+        session.request.return_value = _mock_response(mocker, 200)
 
         client.get("/api")
         call_kwargs = session.request.call_args
@@ -224,7 +224,7 @@ class TestRequest:
     def test_passes_timeout(self, mocker):
         client, session = self._make_client_with_token(mocker)
         client.timeout = 45
-        session.request.return_value = _mock_response(200)
+        session.request.return_value = _mock_response(mocker, 200)
 
         client.get("/api")
         call_kwargs = session.request.call_args
@@ -232,7 +232,7 @@ class TestRequest:
 
     def test_custom_timeout_not_overridden(self, mocker):
         client, session = self._make_client_with_token(mocker)
-        session.request.return_value = _mock_response(200)
+        session.request.return_value = _mock_response(mocker, 200)
 
         client.get("/api", timeout=99)
         call_kwargs = session.request.call_args
@@ -240,7 +240,7 @@ class TestRequest:
 
     def test_custom_headers_merged(self, mocker):
         client, session = self._make_client_with_token(mocker, "tk")
-        session.request.return_value = _mock_response(200)
+        session.request.return_value = _mock_response(mocker, 200)
 
         client.get("/api", headers={"X-Custom": "value"})
         call_kwargs = session.request.call_args
@@ -253,10 +253,10 @@ class TestRequest:
         mock_get_token = mocker.patch.object(
             IAPClient, "_get_id_token", side_effect=["old-token", "new-token"]
         )
-        mock_session = MagicMock()
+        mock_session = mocker.MagicMock()
         mock_session.request.side_effect = [
-            _mock_response(401),
-            _mock_response(200, {"data": "ok"}),
+            _mock_response(mocker, 401),
+            _mock_response(mocker, 200, {"data": "ok"}),
         ]
         client = IAPClient(base_url="https://example.com")
         client._session = mock_session
@@ -276,8 +276,8 @@ class TestRequest:
             "_get_id_token",
             side_effect=["old-token", NoCredentialsError("no creds")],
         )
-        mock_session = MagicMock()
-        original_401 = _mock_response(401)
+        mock_session = mocker.MagicMock()
+        original_401 = _mock_response(mocker, 401)
         mock_session.request.return_value = original_401
         client = IAPClient(base_url="https://example.com")
         client._session = mock_session
@@ -288,7 +288,7 @@ class TestRequest:
 
     def test_non_401_no_retry(self, mocker):
         client, session = self._make_client_with_token(mocker)
-        session.request.return_value = _mock_response(500)
+        session.request.return_value = _mock_response(mocker, 500)
 
         response = client.get("/api")
         assert response.status_code == 500
@@ -302,8 +302,8 @@ class TestHTTPMethods:
     @pytest.fixture(autouse=True)
     def setup_client(self, mocker):
         mocker.patch.object(IAPClient, "_get_id_token", return_value="token")
-        self.mock_session = MagicMock()
-        self.mock_session.request.return_value = _mock_response(200, {"key": "val"})
+        self.mock_session = mocker.MagicMock()
+        self.mock_session.request.return_value = _mock_response(mocker, 200, {"key": "val"})
         self.client = IAPClient(base_url="https://example.com")
         self.client._session = self.mock_session
 
@@ -332,7 +332,7 @@ class TestHTTPMethods:
         assert result == {"key": "val"}
 
     def test_get_json_raises_on_error(self, mocker):
-        self.mock_session.request.return_value = _mock_response(500)
+        self.mock_session.request.return_value = _mock_response(mocker, 500)
         with pytest.raises(requests.HTTPError):
             self.client.get_json("/path")
 
@@ -345,15 +345,15 @@ class TestHTTPMethods:
 
 
 class TestLifecycle:
-    def test_close(self):
+    def test_close(self, mocker):
         client = IAPClient()
-        mock_session = MagicMock()
+        mock_session = mocker.MagicMock()
         client._session = mock_session
         client.close()
         mock_session.close.assert_called_once()
 
-    def test_context_manager(self):
-        mock_session = MagicMock()
+    def test_context_manager(self, mocker):
+        mock_session = mocker.MagicMock()
         with IAPClient() as client:
             client._session = mock_session
         mock_session.close.assert_called_once()
