@@ -32,6 +32,9 @@ DEFAULT_SCOPES = [
     "profile",
 ]
 
+# Default max session lifetime in hours
+DEFAULT_MAX_SESSION_LIFETIME_HOURS = 24
+
 
 @dataclass
 class ClientConfig:
