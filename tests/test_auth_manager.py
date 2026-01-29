@@ -345,3 +345,164 @@ class TestAuthManager:
 
         assert manager.is_authenticated is True
         assert manager.user_email == "stored@example.com"
+
+
+class TestSessionLifetime:
+    """Tests for session lifetime and expiry checks."""
+
+    @pytest.fixture
+    def client_config(self):
+        return ClientConfig(
+            client_id="test-client-id.apps.googleusercontent.com",
+            client_secret="test-secret",
+        )
+
+    def test_stale_session_cleared(self, client_config):
+        """Test that a session older than max lifetime is cleared."""
+        storage = MemoryStorage()
+        old_created = (
+            datetime.now(timezone.utc) - timedelta(hours=25)
+        ).isoformat()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=old_created,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is False
+        assert storage.load() is None
+        assert manager.last_error is not None
+        assert "Session expired" in str(manager.last_error)
+
+    def test_fresh_session_not_cleared(self, client_config):
+        """Test that a session within max lifetime is kept."""
+        storage = MemoryStorage()
+        recent_created = (
+            datetime.now(timezone.utc) - timedelta(hours=1)
+        ).isoformat()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True
+
+    def test_expired_token_refresh_succeeds(self, client_config, mocker):
+        """Test that expired token within session lifetime is refreshed."""
+        storage = MemoryStorage()
+        recent_created = (
+            datetime.now(timezone.utc) - timedelta(hours=1)
+        ).isoformat()
+        storage.save(
+            TokenData(
+                access_token="old-access",
+                id_token="old-id",
+                refresh_token="refresh-123",
+                expiry="2020-01-01T00:00:00+00:00",  # expired
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "access_token": "new-access",
+            "id_token": "new-id",
+            "expires_in": 3600,
+        }
+        mocker.patch(
+            "tokentoss.auth_manager.requests.post",
+            return_value=mock_response,
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True
+        assert manager._token_data.access_token == "new-access"
+
+    def test_expired_token_refresh_fails_clears_creds(self, client_config, mocker):
+        """Test that failed refresh clears credentials and storage."""
+        storage = MemoryStorage()
+        recent_created = (
+            datetime.now(timezone.utc) - timedelta(hours=1)
+        ).isoformat()
+        storage.save(
+            TokenData(
+                access_token="old-access",
+                id_token="old-id",
+                refresh_token="refresh-123",
+                expiry="2020-01-01T00:00:00+00:00",  # expired
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = 400
+        mock_response.content = b'{"error": "invalid_grant"}'
+        mock_response.json.return_value = {"error": "invalid_grant"}
+        mocker.patch(
+            "tokentoss.auth_manager.requests.post",
+            return_value=mock_response,
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is False
+        assert storage.load() is None
+        assert manager.last_error is not None
+        assert "Session expired" in str(manager.last_error)
+
+    def test_backward_compat_no_created_at(self, client_config):
+        """Test that tokens without created_at are treated as fresh."""
+        storage = MemoryStorage()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=None,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True
