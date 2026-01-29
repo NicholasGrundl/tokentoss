@@ -645,7 +645,7 @@ class TestCallbackServerIntegration:
         """Test server shuts down without hanging."""
         server = CallbackServer()
         server.start()
-        port = server.port
+        assert server.port is not None
 
         # Stop should return promptly
         server.stop()
