@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 import socket
 import threading
@@ -14,6 +15,8 @@ import traitlets
 
 from .auth_manager import AuthManager, ClientConfig, generate_pkce_pair
 from .exceptions import TokenExchangeError
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .storage import FileStorage, MemoryStorage
