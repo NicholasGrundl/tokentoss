@@ -21,14 +21,14 @@ from tokentoss.widget import CallbackServer, GoogleAuthWidget
 
 def _make_token_data(**overrides):
     """Create a TokenData with sensible defaults."""
-    defaults = dict(
-        access_token="access-token",
-        id_token="id-token",
-        refresh_token="refresh-token",
-        expiry="2099-01-01T00:00:00+00:00",
-        scopes=["openid"],
-        user_email="user@example.com",
-    )
+    defaults = {
+        "access_token": "access-token",
+        "id_token": "id-token",
+        "refresh_token": "refresh-token",
+        "expiry": "2099-01-01T00:00:00+00:00",
+        "scopes": ["openid"],
+        "user_email": "user@example.com",
+    }
     defaults.update(overrides)
     return TokenData(**defaults)
 
