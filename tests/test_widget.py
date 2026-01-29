@@ -176,7 +176,8 @@ class TestGoogleAuthWidget:
 
         widget.prepare_auth()
 
-        assert "127.0.0.1:12345" in widget.auth_url
+        # URL-encoded: colon becomes %3A
+        assert "127.0.0.1%3A12345" in widget.auth_url
         assert widget.show_manual_input is False
 
     def test_prepare_auth_fallback_to_localhost(self, client_config):
