@@ -1,4 +1,4 @@
 description = "Creates a macro commit consolidating recent micro commits"
 prompt = """
-!{.gemini/hooks/macro-commit.sh --force}
+!{bash .gemini/hooks/macro-commit.sh --force}
 """
