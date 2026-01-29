@@ -35,73 +35,63 @@ Collected during manual testing walkthrough. Items here are candidates for the w
   - **Advanced (future):** HMAC-sign `created_at` with a machine-local secret key to resist casual tampering. Stdlib-only (`hmac` + `hashlib`), auto-generated key in `~/.config/tokentoss/.session_key`. Doesn't protect against attacker with full filesystem access, so low incremental value.
 - **Priority:** Medium — security/UX concern, should address before v0.1.0 or at latest v0.2.0
 
-### 4. BUG: OAuth callback flow broken — callback server never receives auth code
-- **Severity:** High — blocks authentication entirely (both fresh and re-auth)
-- **Status:** Partially diagnosed, root cause not fully confirmed
+### 4. BUG (RESOLVED): OAuth callback flow broken — favicon request overwrites auth code
+- **Severity:** High — blocked authentication entirely (both fresh and re-auth)
+- **Status:** Fixed in `widget.py`
+- **Root cause:** Browser `/favicon.ico` request
 
-#### Symptoms
-1. User clicks "Sign in with Google", popup opens, OAuth flow completes, **success page is displayed** in popup
-2. Popup auto-closes (via `setTimeout(window.close(), 1500)` in success HTML)
-3. Widget does NOT update to "Signed in" — instead shows either:
-   - "Click to sign in" (meaning `_check_callback()` ran, `check_callback()` returned `True`, but `auth_code` was `None`)
-   - "Paste the redirect URL below" (meaning `check_callback()` returned `False` — callback not received)
-4. Subsequent attempts also fail with port mismatch
+#### Root Cause
 
-#### Observed Evidence
-- **Port mismatch confirmed multiple times:** Auth URL contains `redirect_uri=http://127.0.0.1:{port_A}` but `widget._callback_server.port` is `{port_B}` after flow completes
-  - Example 1: auth URL port `56820`, server port `56834`
-  - Example 2: auth URL port `57640`, server port `57643`
-- **Server state after failure:** `callback_received: False`, `auth_code: None`, `error: None`, `_server` is not `None` (server alive but saw nothing)
-- **Monkey-patching `_try_start_server`** on the widget instance did NOT fire — suggesting the server is being replaced via a different code path (e.g. `self._try_start_server()` resolved from the class, not the patched instance attribute, OR a new `CallbackServer` object is being created)
-- **Monkey-patching `_CallbackHandler.do_GET`** at the class level also did NOT fire — the handler never processed any GET request, even though the browser displayed the success HTML. This is the most puzzling observation.
-- **First-ever auth (previous day)** worked. Token was persisted to disk. All subsequent fresh-kernel attempts fail.
-- **Widget auto-detects existing tokens** correctly — when `tokens.json` exists from a prior session, `__init__` → `_load_from_storage()` works and widget shows "Signed in"
+`_CallbackHandler.do_GET()` handled **all** GET requests identically, unconditionally storing parsed query params on the server. After the real OAuth callback (`/?code=AUTH_CODE&state=NONCE`), the browser automatically requested `/favicon.ico` (standard browser behavior when loading any HTML page). This second request had no query params, so `do_GET()` overwrote:
+- `server.auth_code = None` (was the real auth code)
+- `server.state = None` (was the CSRF nonce)
+- `server.callback_received = True` (unchanged)
 
-#### Analysis & Hypotheses
+When `_check_callback()` then ran, it found `callback_received=True` but `auth_code=None`, hitting the "no code received" branch and resetting the widget to "Click to sign in".
 
-**Hypothesis A: Port mismatch from server recycling**
-- `_check_callback()` (`widget.py:648-650`) calls `stop()` then `_try_start_server()` unconditionally after any callback check that returns `True`
-- This allocates a new random port, but the auth URL still references the old port
-- However, this doesn't explain why the FIRST attempt on a fresh kernel also fails (no prior `_check_callback()` to recycle the server)
+#### Diagnostic trace that confirmed the bug
 
-**Hypothesis B: `check_callback()` fires prematurely (race condition)**
-- JS polls every 500ms for `popup.closed` (`widget.py:340-348`)
-- The popup may briefly report as "closed" during the OAuth redirect (navigating between Google's consent page and the localhost callback)
-- If JS detects `popup.closed` before the OAuth flow completes, it sends `check_callback` too early
-- Python's `_check_callback()` finds no callback yet → takes the `else` branch (line 651-654) OR the `True` branch with no code (line 643-646)
-- In the `True`-with-no-code path: server is stopped and restarted (lines 648-650), new port assigned
-- The actual OAuth redirect then hits the OLD port (now dead) → success page was likely served by the old server just before it was stopped, but the code was lost in the stop/restart
-- This would explain: success page visible, but code never captured by current server
+Using `enable_debug()` logging added to `do_GET`, two requests were visible:
+```
+[tokentoss.widget DEBUG] Callback received: code=True, state=True, error=None    ← real OAuth callback
+[tokentoss.widget DEBUG] Callback received: code=False, state=False, error=None   ← /favicon.ico
+```
 
-**Hypothesis C: Multiple `_check_callback()` invocations**
-- JS polling continues sending `check_callback` messages while the popup is open
-- If `_handle_message` dispatches `check_callback` multiple times rapidly, the server could be cycled multiple times
-- The +3 port gap (57640 → 57643) suggests ~3 server restarts occurred
+The polling loop then read `auth_code=None` because the favicon request had already overwritten it.
 
-**Hypothesis D: Browser behavior / popup detection**
-- Some browsers may report `popup.closed` differently during redirects
-- The `window.open()` popup may lose its reference during cross-origin navigation (Google → localhost)
-- This could trigger the "popup closed" detection prematurely
+#### Fix applied
 
-#### Key Code Paths (for debugging)
+In `do_GET()`, only store callback data when the request is an actual OAuth callback (has `code` or `error` param):
 
-1. **JS click handler** → `model.send({ type: 'prepare_auth' })` (`widget.py:281`)
-2. **Python `prepare_auth()`** → resets server, generates PKCE, builds auth URL with current server port (`widget.py:587-618`)
-3. **JS `onAuthUrlChange`** → opens popup, starts polling (`widget.py:318-336`)
-4. **JS polling** → every 500ms checks `popup.closed`, sends `check_callback` when true (`widget.py:338-356`)
-5. **Python `_check_callback()`** → reads server state, exchanges code or resets (`widget.py:620-654`)
-6. **Callback handler** → `_CallbackHandler.do_GET()` stores code on `self.server` (`widget.py:69-99`)
-7. **Server lifecycle** → `stop()` copies results then shuts down, `_try_start_server()` creates fresh server (`widget.py:118-145, 152-168`)
+```python
+is_callback = auth_code is not None or error is not None
+if is_callback:
+    self.server.auth_code = auth_code
+    self.server.state = state
+    self.server.error = error
+    self.server.callback_received = True
+```
 
-#### Proposed Fix Direction
-1. **Do NOT restart the server in `_check_callback()`** — remove lines 649-650. Keep the same server alive.
-2. **Only create/restart server in `prepare_auth()`** — tie the server lifecycle to auth flow initiation, not callback checking.
-3. **Debounce or guard `check_callback`** — prevent multiple invocations from JS polling. Add a flag like `_auth_in_progress` that's set in `prepare_auth()` and cleared after exchange or timeout.
-4. **Consider removing popup auto-close** — let the user close the popup manually, giving more time for the callback to be captured. Or increase the auto-close delay significantly (e.g. 5s).
-5. **Add logging** — the callback server and handler are completely silent. Add `print()` or `logging` calls to `_CallbackHandler.do_GET()`, `CallbackServer.start()`, `CallbackServer.stop()`, and `_check_callback()` to make debugging possible.
+Non-callback requests (`/favicon.ico`, `/robots.txt`, etc.) still receive a 200 response but do not modify stored auth data.
 
-#### Priority
-**High — must fix before v0.1.0.** This blocks the core authentication flow. The widget's primary purpose is non-functional.
+#### Additional hardening applied (from original analysis)
+
+The earlier hypotheses (A–D) identified real secondary issues that were also fixed:
+1. **`_try_start_server()` now stops old server first** — prevents orphaned servers holding old ports
+2. **`_check_callback()` uses `reset()` instead of `stop()` + `_try_start_server()`** — server stays alive on the same port between auth flows
+3. **JS popup polling debounced** — requires 2 consecutive `popup.closed` checks (1s total) before firing `check_callback`, preventing premature detection during cross-origin redirects
+4. **Logging added** — `_logging.py` module with `enable_debug()`/`disable_debug()`, debug calls in `do_GET`, `start()`, `stop()`, `prepare_auth()`, `_check_callback()`, `_handle_message()`
+
+#### Test updated
+
+`test_server_handles_no_query_params` renamed to `test_server_ignores_no_query_params` — now asserts that requests without `code`/`error` params do NOT set `callback_received=True`.
+
+### 5. BUG: `test_init_requires_config` fails when config file exists on disk
+- **Severity:** Low — test-only, does not affect runtime
+- **Status:** Open
+- **Root cause:** `AuthManager.__init__` auto-discovers config from the platform default path (`~/.config/tokentoss/client_secrets.json` or equivalent). The test `test_init_requires_config` expects `AuthManager(storage=MemoryStorage())` to raise `ValueError`, but when a config file exists on the developer's machine, auto-discovery succeeds and no error is raised.
+- **Fix:** Mock `get_config_path` to return a non-existent path, isolating the test from the host filesystem.
+- **Priority:** Low — only fails on machines with existing config, does not affect CI (if CI has no config file)
 
 ---
 
