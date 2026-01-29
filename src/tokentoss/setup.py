@@ -62,6 +62,7 @@ def configure(
         client_id: Google OAuth client ID.
         client_secret: Google OAuth client secret.
         path: Path to an existing client_secrets.json file.
+        project_id: Optional GCP project ID (only used with client_id/client_secret).
 
     Returns:
         Path where client_secrets.json was installed.
