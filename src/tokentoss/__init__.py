@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ._logging import disable_debug, enable_debug
 from .auth_manager import DEFAULT_SCOPES, AuthManager, ClientConfig, generate_pkce_pair
 from .exceptions import (
     InsecureFilePermissionsWarning,
