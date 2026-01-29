@@ -130,9 +130,18 @@ class AuthManager:
         elif client_secrets_path is not None:
             self.client_config = ClientConfig.from_file(client_secrets_path)
         else:
-            raise ValueError(
-                "Either client_config or client_secrets_path must be provided"
-            )
+            # Auto-discover from standard platformdirs location
+            from .setup import get_config_path
+
+            default_path = get_config_path()
+            if default_path.exists():
+                self.client_config = ClientConfig.from_file(default_path)
+            else:
+                raise ValueError(
+                    "No client config provided. Either pass client_config or "
+                    "client_secrets_path, or run tokentoss.configure() to install "
+                    f"credentials at {default_path}"
+                )
 
         # Set up storage
         self.storage = storage if storage is not None else FileStorage()
