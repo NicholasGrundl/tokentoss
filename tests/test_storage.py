@@ -95,6 +95,59 @@ class TestTokenData:
 
         assert token.is_expired is True
 
+    def test_created_at_round_trip(self):
+        """Test created_at survives to_dict / from_dict round trip."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=["openid"],
+            created_at="2024-01-15T09:00:00+00:00",
+        )
+
+        data = token.to_dict()
+        assert data["created_at"] == "2024-01-15T09:00:00+00:00"
+
+        restored = TokenData.from_dict(data)
+        assert restored.created_at == "2024-01-15T09:00:00+00:00"
+
+    def test_created_at_none_by_default(self):
+        """Test created_at is None when not provided."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=[],
+        )
+
+        assert token.created_at is None
+        assert token.created_at_datetime is None
+
+        # Round-trip preserves None
+        data = token.to_dict()
+        assert data["created_at"] is None
+        restored = TokenData.from_dict(data)
+        assert restored.created_at is None
+
+    def test_created_at_datetime_property(self):
+        """Test created_at_datetime parses ISO string."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=[],
+            created_at="2024-01-15T09:00:00+00:00",
+        )
+
+        dt = token.created_at_datetime
+        assert dt is not None
+        assert dt.year == 2024
+        assert dt.month == 1
+        assert dt.hour == 9
+
 
 class TestMemoryStorage:
     """Tests for MemoryStorage."""
