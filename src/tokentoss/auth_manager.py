@@ -319,6 +319,7 @@ class AuthManager:
                 expiry=expiry.isoformat(),
                 scopes=data.get("scope", " ".join(self.scopes)).split(),
                 user_email=user_email,
+                created_at=datetime.now(timezone.utc).isoformat(),
             )
 
             # Save tokens
