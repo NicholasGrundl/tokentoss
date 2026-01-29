@@ -264,7 +264,7 @@ function render({ model, el }) {
     container.appendChild(statusEl);
     container.appendChild(button);
     container.appendChild(manualSection);
-    container.appendChild(signOutLink);
+    container.appendChild(signOutButton);
     container.appendChild(errorEl);
     el.appendChild(container);
 
