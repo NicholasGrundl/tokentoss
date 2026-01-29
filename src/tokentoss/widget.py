@@ -483,14 +483,26 @@ _CSS = """
 }
 
 .tokentoss-signout {
+    display: none;
+    padding: 8px 16px;
     font-size: 13px;
-    color: #6b7280;
-    text-decoration: none;
+    font-weight: 500;
+    color: #ffffff;
+    background: #dc2626;
+    border: 1px solid #dc2626;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
 .tokentoss-signout:hover {
-    text-decoration: underline;
-    color: #374151;
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.tokentoss-signout:active {
+    background: #991b1b;
+    border-color: #991b1b;
 }
 
 .tokentoss-error {
