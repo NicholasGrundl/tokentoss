@@ -752,6 +752,7 @@ class GoogleAuthWidget(anywidget.AnyWidget):
     def _handle_message(self, widget, content, buffers):
         """Handle custom messages from JavaScript."""
         msg_type = content.get("type")
+        logger.debug("Received message: %s", msg_type)
 
         if msg_type == "prepare_auth":
             self.prepare_auth()
