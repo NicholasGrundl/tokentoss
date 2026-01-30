@@ -181,6 +181,8 @@ gcloud beta run deploy $SERVICE_NAME \
 
 The `--iap` flag enables Cloud Run's native IAP integration directly on the service. No load balancer, no NEG, no SSL certificate, no static IP. IAP is enforced on **all** ingress paths, including the default `*.run.app` URL.
 
+> **Note:** `gcloud beta run deploy --iap` is currently a beta feature. The flag or behavior may change when it reaches GA.
+
 Note the service URL from the output (e.g. `https://tokentoss-test-service-xxxxx-uw.a.run.app`). With native IAP, you use this URL directly.
 
 ### 5. Create the IAP Service Agent
