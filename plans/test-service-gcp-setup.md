@@ -8,8 +8,9 @@ Deploy the reference FastAPI service (`examples/test-service/`) behind IAP on Cl
 
 ## Prerequisites
 
-- [ ] GCP project with billing enabled
-- [ ] GCP project belongs to a **Google Cloud Organization** (required for native Cloud Run IAP — personal Gmail-only projects won't work)
+- [ ] A domain you own (e.g., `yourllc.com`)
+- [ ] Google Cloud Organization set up via Cloud Identity Free (see next section)
+- [ ] GCP project with billing enabled, under the Organization
 - [ ] `gcloud` CLI installed and authenticated (`gcloud auth login`)
 - [ ] Set environment variables:
 
@@ -18,6 +19,96 @@ export PROJECT_ID=your-project-id
 export REGION=us-west1
 export SERVICE_NAME=tokentoss-test-service
 export PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format="value(projectNumber)")
+```
+
+---
+
+## Step 0: Set Up Google Cloud Organization
+
+Cloud Run's native IAP integration requires your GCP project to belong to a Google Cloud Organization. The free way to create one is through **Cloud Identity Free**.
+
+### What Cloud Identity Free gives you
+
+- A Google Cloud **Organization resource** (required for IAP)
+- An admin account like `admin@yourllc.com` for managing GCP
+- Up to 50 user accounts at no cost (can request more, also free)
+- Basic user and group management via Google Admin Console
+- SSO and identity management
+
+### What it does NOT include
+
+- **No Gmail** — Cloud Identity Free is identity-only, no email hosting
+- No Google Calendar, Drive, Docs, etc. (those are Google Workspace)
+- No email inbox at `admin@yourllc.com` unless you set up forwarding separately
+
+### Sign up for Cloud Identity Free
+
+1. Go to the [Cloud Identity Free signup page](https://workspace.google.com/signup/gcpidentity/welcome)
+2. Enter your business name (your LLC name)
+3. Enter a contact email you already have (e.g., your personal Gmail) — this is for account recovery only
+4. Enter your domain (e.g., `yourllc.com`)
+5. **Verify domain ownership** — Google will ask you to add a **TXT record** to your domain's DNS:
+   - Go to your domain registrar / DNS provider (Cloudflare, Namecheap, Route53, etc.)
+   - Add the TXT record Google provides (something like `google-site-verification=xxxx`)
+   - Wait for verification (usually minutes, can take up to an hour)
+6. Create your first admin account: `admin@yourllc.com` (or whatever you prefer)
+   - Set a strong password — this becomes the **super admin** for your Organization
+7. Done — you now have a Google Cloud Organization
+
+### Set up email forwarding to your personal email
+
+Since Cloud Identity Free has no Gmail, emails sent to `admin@yourllc.com` will bounce unless you set up forwarding. There are two approaches:
+
+#### Option A: Forward at the DNS / domain level (recommended)
+
+This is the simplest — handle it where your domain is registered, before Google is involved at all.
+
+**If using Cloudflare** (Email Routing):
+1. Go to your Cloudflare dashboard > your domain > **Email Routing**
+2. Click **Enable Email Routing** if not already enabled
+3. Add a route:
+   - **Custom address**: `admin@yourllc.com` (or `*` for catch-all)
+   - **Destination**: `yourpersonal@gmail.com`
+4. Verify your destination email (Cloudflare sends a confirmation link)
+5. Cloudflare automatically sets the MX records
+
+**If using Namecheap**:
+1. Domain List > Manage > **Email Forwarding** (under "Redirect Email" tab)
+2. Add forward: `admin` → `yourpersonal@gmail.com`
+
+**If using another registrar**: Most registrars offer basic email forwarding. Look for "Email Forwarding" or "Email Aliases" in the domain settings.
+
+#### Option B: Forward via Google Admin routing rules
+
+This only works if you also point your domain's MX records to Google (which you wouldn't normally do with Cloud Identity Free since there's no Gmail). Generally **Option A is simpler** unless you have a specific reason to route through Google.
+
+### Move your existing GCP project under the Organization
+
+If you already have a GCP project under your personal Gmail:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com) > **IAM & Admin > Settings**
+2. Click **Migrate** (at the top)
+3. Select your new Organization as the destination
+4. Confirm
+
+Or via CLI:
+```bash
+gcloud projects move $PROJECT_ID --organization=ORG_ID
+```
+
+To find your Org ID:
+```bash
+gcloud organizations list
+```
+
+### Verify the Organization is set up
+
+```bash
+# List your organizations
+gcloud organizations list
+
+# Verify your project is under the org
+gcloud projects describe $PROJECT_ID --format="value(parent.id)"
 ```
 
 ---
