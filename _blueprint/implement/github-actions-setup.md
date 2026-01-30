@@ -2,49 +2,56 @@
 
 ## GitHub Repository Settings
 
+### Make Repository Public
+- [ ] Go to repo **Settings > General > Danger Zone**
+- [ ] Click **Change visibility** → set to **Public**
+- [ ] Confirm
+
+> Required for PyPI trusted publisher (OIDC) to work.
+
 ### Create the `pypi` Environment
-1. Go to repo **Settings > Environments > New environment**
-2. Name it exactly: `pypi`
-3. Click **Configure environment**
-4. Enable **Required reviewers** — add yourself
-5. Save
+- [ ] Go to repo **Settings > Environments > New environment**
+- [ ] Name it exactly: `pypi`
+- [ ] Click **Configure environment**
+- [ ] Enable **Required reviewers** — add yourself
+- [ ] Save
 
 ### Set Up Branch Protection for `main`
-1. Go to repo **Settings > Branches > Add branch ruleset** (or "Add rule")
-2. Branch name pattern: `main`
-3. Enable:
-   - **Require a pull request before merging** (no direct pushes)
-   - **Require approvals**: set to 1
-   - **Require status checks to pass** — select `lint`, `typecheck`, and `test`
-4. Save
+- [ ] Go to repo **Settings > Branches > Add branch ruleset** (or "Add rule")
+- [ ] Branch name pattern: `main`
+- [ ] Enable:
+  - **Require a pull request before merging** (no direct pushes)
+  - **Require approvals**: set to 1
+  - **Require status checks to pass** — select `lint`, `typecheck`, and `test`
+- [ ] Save
 
 ### (Optional) Create a `release` Environment
 If you want manual approval before GitHub Releases are created (separate from PyPI publish):
-1. Settings > Environments > New environment
-2. Name: `release`
-3. Enable **Required reviewers** — add yourself
-4. Save
-5. Ask Claude to add `environment: release` to the `github-release` job in `release.yml`
+- [ ] Settings > Environments > New environment
+- [ ] Name: `release`
+- [ ] Enable **Required reviewers** — add yourself
+- [ ] Save
+- [ ] Ask Claude to add `environment: release` to the `github-release` job in `release.yml`
 
 ---
 
 ## PyPI Account Setup
 
 ### Create / Verify PyPI Account
-1. Go to [pypi.org](https://pypi.org) and register (or log in)
-2. Enable **2FA** (required for publishing)
-3. Verify your email
+- [ ] Go to [pypi.org](https://pypi.org) and register (or log in)
+- [ ] Enable **2FA** (required for publishing)
+- [ ] Verify your email
 
 ### Register Trusted Publisher on PyPI
-1. Go to [pypi.org](https://pypi.org) > **Your Account** > **Publishing**
-2. Click **Add a new pending publisher**
-3. Fill in:
-   - **PyPI project name**: `tokentoss`
-   - **Owner**: `NicholasGrundl`
-   - **Repository name**: `tokentoss`
-   - **Workflow name**: `release.yml`
-   - **Environment name**: `pypi`
-4. Submit
+- [ ] Go to [pypi.org](https://pypi.org) > **Your Account** > **Publishing**
+- [ ] Click **Add a new pending publisher**
+- [ ] Fill in:
+  - **PyPI project name**: `tokentoss`
+  - **Owner**: `NicholasGrundl`
+  - **Repository name**: `tokentoss`
+  - **Workflow name**: `release.yml`
+  - **Environment name**: `pypi`
+- [ ] Submit
 
 ---
 
@@ -52,11 +59,11 @@ If you want manual approval before GitHub Releases are created (separate from Py
 
 ### Push Branch and Open a PR
 ```bash
-git push -u origin feature/phase2-widget
-gh pr create --title "Phase 2: widget implementation" --body "..."
+git push -u origin <your-feature-branch>
+gh pr create --title "Your PR title" --body "..."
 ```
-- Watch the **Actions** tab — CI (lint, typecheck, test x3) and Security (pip-audit, bandit) workflows should trigger
-- Verify all checks pass before merging
+- [ ] Watch the **Actions** tab — CI (lint, typecheck, test x3) and Security (pip-audit, bandit) workflows should trigger
+- [ ] Verify all checks pass before merging
 
 ---
 
@@ -82,4 +89,4 @@ If you want to test the pipeline first:
 git tag v0.1.0-rc1
 git push origin v0.1.0-rc1
 ```
-Watch the Actions tab. If PyPI publish fails (e.g., trusted publisher not configured yet), the build and GitHub Release jobs still give useful signal.
+- [ ] Watch the Actions tab. If PyPI publish fails (e.g., trusted publisher not configured yet), the build and GitHub Release jobs still give useful signal.
