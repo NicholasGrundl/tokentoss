@@ -211,6 +211,20 @@ print(whoami)
 
 ---
 
+## Troubleshooting
+
+**Widget doesn't render:** Ensure you're running in JupyterLab (not plain Jupyter Notebook). Check that `anywidget` is installed: `uv run pip list | grep anywidget`.
+
+**Popup blocked:** Browser popup blockers can prevent the OAuth window from opening. Allow popups for `localhost`. The widget provides a manual URL fallback if the popup fails.
+
+**"Config not found" error:** Run Cell 3 (ConfigureWidget) first. Check that the file exists at the path shown by `tokentoss.get_config_path()`.
+
+**Token expired after waiting:** Tokens expire after ~1 hour. Re-run Cell 5 to re-authenticate. The widget should handle refresh automatically if a refresh token is present.
+
+**Sign-out doesn't clear state:** Restart the kernel and re-run from Cell 1. Module-level `CREDENTIALS` persists in the Python process.
+
+---
+
 ## Summary Checklist
 
 | # | Test | Pass? |
