@@ -6,6 +6,20 @@ Deploy the reference FastAPI service (`examples/test-service/`) behind IAP on Cl
 
 ---
 
+## Quick Path (already have Org + Project)
+
+If you already have a GCP Organization, project with billing, and `gcloud` authenticated, skip to:
+1. [Enable APIs](#1-enable-required-apis)
+2. [Configure OAuth consent screen](#2-configure-oauth-consent-screen) (browser)
+3. [Create Desktop OAuth client](#3-create-desktop-oauth-client) (browser)
+4. [Deploy with `--iap`](#4-deploy-to-cloud-run-with-iap-enabled)
+5. [Create IAP service agent](#5-create-the-iap-service-agent)
+6. [Add Desktop client to IAP programmatic access](#7-add-desktop-client-to-iap-programmatic-access) (browser)
+7. [Grant user access](#8-grant-user-access-to-the-iap-resource)
+8. [Verify with tokentoss](#verify-with-tokentoss-jupyter-notebook)
+
+---
+
 ## Prerequisites
 
 - [ ] A domain you own (e.g., `yourllc.com`)
