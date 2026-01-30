@@ -99,6 +99,7 @@ python-version = "3.10"
 [tool.bandit]
 targets = ["src/"]
 exclude_dirs = ["tests/"]
+skips = ["B105"]  # false positives on Google OAuth URL constants named *TOKEN*
 
 [[tool.ty.overrides]]
 include = ["src/tokentoss/widget.py"]
