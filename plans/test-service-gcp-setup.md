@@ -299,8 +299,8 @@ That's it — no load balancer components, NEGs, static IPs, or SSL certs to tea
 ## Open Decisions
 
 - **Region**: `us-west1` is assumed — change if your GCP resources are elsewhere
-- **User type**: External (Gmail users) vs Internal (Workspace only)?
-- **Organization**: Confirm your GCP project is in a Cloud Organization (required for native Cloud Run IAP)
+- **User type**: External (Gmail users) vs Internal (Workspace only)? Since you'll have an Organization with Cloud Identity Free, you can choose either. External is more flexible if end users will authenticate with personal Gmail accounts.
+- **Admin email handle**: `admin@yourllc.com` is suggested — pick whatever makes sense for your LLC
 - **JWT verification**: The service currently trusts IAP headers without verifying the JWT assertion. Fine for a test service; could add verification later for production use.
 
 ---
