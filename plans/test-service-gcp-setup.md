@@ -436,3 +436,7 @@ gcloud run services delete $SERVICE_NAME --region=$REGION -q --project=$PROJECT_
 - [Enable IAP for Cloud Run (IAP docs)](https://cloud.google.com/iap/docs/enabling-cloud-run)
 - [1-click IAP with Cloud Run (Google Codelab)](https://codelabs.developers.google.com/codelabs/cloud-run/how-to-use-iap-cloud-run)
 - [Using IAP with Cloud Run Without a Load Balancer (Medium)](https://medium.com/google-cloud/using-google-identity-aware-proxy-iap-with-cloud-run-without-a-load-balancer-27db89b9ed49)
+- [Cloud Identity Free Pricing](https://cloud.google.com/identity/pricing)
+- [Cloud Identity Editions](https://cloud.google.com/identity/docs/editions)
+- [Create a GCP Organization with Cloud Identity Free (step-by-step)](https://medium.com/@dlouvier/how-to-create-a-google-cloud-organization-using-cloud-identity-for-free-step-by-step-guide-e72862d5cf58)
+- [Setting Up Identity-Only Accounts with Email Forwarding](https://www.wavether.com/blog/2025/11/17/setting-up-identity-only-google-accounts-with-email-forwarding/)
