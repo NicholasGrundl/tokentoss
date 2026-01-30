@@ -74,3 +74,64 @@ The `_blueprint/` directory contains all planning, design, and reference documen
 - Roadmap and design documents belong in `_blueprint/plan/`
 - Once a plan or implementation is complete, move it to `_blueprint/archive/`
 - Raw ideas and exploration go in `_blueprint/ideas/` until refined into a proper plan
+
+## Exploring with `tree`
+
+Use the `tree` command for rapid assessment of directory structure. This is useful for progressive disclosure — start broad, then drill into specific areas.
+
+### Basic usage
+
+```bash
+# Full tree of a directory
+tree _blueprint/
+
+# Full tree of src package
+tree src/
+```
+
+### Directories only
+
+```bash
+# Show only folder structure (no files)
+tree -d _blueprint/
+tree -d src/
+```
+
+### Limit depth
+
+```bash
+# Top-level folders only
+tree -L 1 _blueprint/
+
+# Two levels deep (folders + immediate contents)
+tree -L 2 _blueprint/context/
+
+# Quick overview of entire project
+tree -L 1 .
+```
+
+### Exclude directories
+
+```bash
+# Exclude __pycache__ and .git
+tree -I "__pycache__|.git" src/
+
+# Exclude multiple patterns
+tree -I "__pycache__|.git|node_modules|*.pyc" .
+```
+
+### Common patterns
+
+```bash
+# Blueprint context topics at a glance
+tree -d -L 1 _blueprint/context/
+
+# Then drill into a specific topic
+tree _blueprint/context/pytest/
+
+# Source module structure without cache dirs
+tree -I "__pycache__" src/
+
+# Project overview: dirs only, 2 levels, skip noise
+tree -d -L 2 -I "__pycache__|.git|*.egg-info" .
+```
