@@ -96,6 +96,10 @@ quote-style = "double"
 [tool.ty.environment]
 python-version = "3.10"
 
+[tool.bandit]
+targets = ["src/"]
+exclude_dirs = ["tests/"]
+
 [[tool.ty.overrides]]
 include = ["src/tokentoss/widget.py"]
 [tool.ty.overrides.rules]
