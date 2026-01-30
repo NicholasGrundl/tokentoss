@@ -312,12 +312,14 @@ That's it — no load balancer components, NEGs, static IPs, or SSL certs to tea
 
 ---
 
-## Open Decisions
+## Decisions to Make Before Starting
 
-- **Region**: `us-west1` is assumed — change if your GCP resources are elsewhere
-- **User type**: External (Gmail users) vs Internal (Workspace only)? Since you'll have an Organization with Cloud Identity Free, you can choose either. External is more flexible if end users will authenticate with personal Gmail accounts.
-- **Admin email handle**: `admin@yourllc.com` is suggested — pick whatever makes sense for your LLC
-- **JWT verification**: The service currently trusts IAP headers without verifying the JWT assertion. Fine for a test service; could add verification later for production use.
+Resolve these before beginning setup:
+
+- **Region**: `us-west1` is assumed throughout this guide. Change the `REGION` env var if your GCP resources are elsewhere.
+- **User type**: External (Gmail users) vs Internal (Workspace only). External is more flexible if end users authenticate with personal Gmail accounts. Internal locks it to your org.
+- **Admin email handle**: `admin@yourllc.com` is suggested — pick whatever makes sense for your LLC.
+- **JWT verification**: The test service trusts IAP headers without verifying the JWT assertion. Acceptable for a test/demo service; production services should verify.
 
 ---
 
