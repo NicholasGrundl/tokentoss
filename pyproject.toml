@@ -42,6 +42,8 @@ dev = [
     "jupyterlab>=4.0.0",
     "ruff>=0.11.0",
     "ty>=0.0.1a7",
+    "pip-audit>=2.7.0",
+    "bandit>=1.7.0",
 ]
 
 [build-system]
