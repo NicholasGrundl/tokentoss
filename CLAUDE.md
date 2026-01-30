@@ -35,3 +35,25 @@ uv run ruff check src/ tests/ --fix
 ```bash
 uv run ty check src/
 ```
+
+## Security
+
+```bash
+uv run pip-audit
+uv run bandit -r src/ -c pyproject.toml
+```
+
+- `pip-audit` checks dependencies for known CVEs
+- `bandit` scans source code for common security issues
+- Both run in CI on every PR and weekly via `.github/workflows/security.yml`
+
+## Just Commands
+
+A `justfile` provides shortcuts for common tasks. Run `just --list` to see all recipes.
+
+```bash
+just ci              # run all CI checks locally (lint + typecheck + test)
+just fix             # auto-fix formatting and lint issues
+just security        # run all security checks
+just release 0.2.0   # bump version, commit, and tag
+```
