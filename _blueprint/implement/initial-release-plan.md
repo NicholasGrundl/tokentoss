@@ -3,13 +3,13 @@
 ## Goal
 Ship v0.1.0 to PyPI to secure the `tokentoss` package name. No code refactoring — release the current codebase as-is.
 
-## Current State
-- 163 tests passing, CI workflows exist, pyproject.toml ready
-- LICENSE, CONTRIBUTING.md, README.md all present
+## Prerequisites
+- All tests passing (`uv run pytest tests/ -x -q`)
+- LICENSE, CONTRIBUTING.md, README.md present
 - PyPI account + 2FA: done
 - Trusted publisher on PyPI: registered
-- GitHub `pypi` environment: **not created yet**
-- Repo visibility: **private**
+- GitHub `pypi` environment: created (see `github-actions-setup.md`)
+- Repo visibility: **public** (required for trusted publisher OIDC)
 
 ## Steps
 
@@ -19,9 +19,14 @@ Ship v0.1.0 to PyPI to secure the `tokentoss` package name. No code refactoring 
 
 ### Step 2: Local smoke test (agent can verify)
 ```bash
+# Build the package
 uv build
-uv run pip install dist/tokentoss-0.1.0-py3-none-any.whl
-python -c "import tokentoss; print(tokentoss.__version__)"
+
+# Verify README renders correctly for PyPI
+uv run twine check dist/*
+
+# Install and test in a temp venv
+uv run python -c "import tokentoss; print(tokentoss.__version__)"
 ```
 
 ### Step 3: Merge to main and release
@@ -38,9 +43,11 @@ git push && git push origin v0.1.0
 ### Step 4: Verify
 - Check https://pypi.org/project/tokentoss/
 - `pip install tokentoss` from a clean venv
+- Verify the PyPI project page renders the README correctly
 
 ## What Agent Can Do (code-side)
 - Run the local build + smoke test to make sure the package builds cleanly
+- Run `twine check` to verify README/metadata rendering
 - Review README.md for anything that should be polished before going public
 - Verify CI workflows pass on the current branch
 - Help create the PR to merge feature branch into main
