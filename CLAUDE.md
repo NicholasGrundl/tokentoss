@@ -55,7 +55,7 @@ A `justfile` provides shortcuts for common tasks. Run `just --list` to see all r
 just ci              # run all CI checks locally (lint + typecheck + test)
 just fix             # auto-fix formatting and lint issues
 just security        # run all security checks
-just release 0.2.0   # bump version, commit, and tag
+just start-release 0.2.0   # bump version, commit, tag, and push
 ```
 
 ## Blueprint Directory
