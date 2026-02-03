@@ -19,7 +19,7 @@ jobs:
           version: "latest"
       - run: uv sync --group dev
       # TODO: Periodically review ignored CVEs — remove once fixed versions are adopted
-      # See https://github.com/NicholasGrundl/tokentoss/issues/XX for plan to migrate to osv-scanner
+      # See https://github.com/NicholasGrundl/tokentoss/issues/2 for plan to migrate to osv-scanner
       # CVE-2025-53000: nbconvert 7.16.6 — no fix available yet
       # CVE-2026-1703:  pip 25.3 — fixed in pip 26.0
       - run: >-
