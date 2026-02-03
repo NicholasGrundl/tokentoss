@@ -83,3 +83,7 @@ build:
     uv build
     @echo "Built packages:"
     @ls -lh dist/
+
+# Verify built package metadata (README renders correctly for PyPI)
+check:
+    uvx twine check dist/*
