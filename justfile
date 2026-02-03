@@ -66,7 +66,7 @@ tag:
     echo "Tag v$VERSION created. Push with: git push origin v$VERSION"
 
 # Full release flow: bump version, commit, tag, push
-release NEW_VERSION:
+start-release NEW_VERSION:
     #!/usr/bin/env bash
     set -euo pipefail
 
