@@ -65,18 +65,57 @@ tag:
     git tag "v$VERSION"
     echo "Tag v$VERSION created. Push with: git push origin v$VERSION"
 
-# Full release flow: bump version, commit, tag
+# Full release flow: bump version, commit, tag, push
 release NEW_VERSION:
     #!/usr/bin/env bash
     set -euo pipefail
+
+    # Validate version format
+    if ! echo "{{ NEW_VERSION }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+      echo "Error: Invalid version format '{{ NEW_VERSION }}'. Expected: X.Y.Z or X.Y.Z-suffix"
+      exit 1
+    fi
+
+    # Check on main branch
+    BRANCH=$(git branch --show-current)
+    if [ "$BRANCH" != "main" ]; then
+      echo "Error: Must be on 'main' branch to release (currently on '$BRANCH')"
+      exit 1
+    fi
+
+    # Check working tree is clean
+    if [ -n "$(git status --porcelain)" ]; then
+      echo "Error: Working tree is not clean. Commit or stash changes first."
+      exit 1
+    fi
+
+    # Check up to date with remote
+    git fetch origin main --quiet
+    LOCAL=$(git rev-parse HEAD)
+    REMOTE=$(git rev-parse origin/main)
+    if [ "$LOCAL" != "$REMOTE" ]; then
+      echo "Error: Local main is not up to date with origin. Run 'git pull' first."
+      exit 1
+    fi
+
+    # Check tag doesn't already exist
+    if git tag -l | grep -q "^v{{ NEW_VERSION }}$"; then
+      echo "Error: Tag v{{ NEW_VERSION }} already exists locally"
+      exit 1
+    fi
+    if git ls-remote --tags origin | grep -q "refs/tags/v{{ NEW_VERSION }}$"; then
+      echo "Error: Tag v{{ NEW_VERSION }} already exists on remote"
+      exit 1
+    fi
+
+    # All checks passed — execute release
     just bump {{ NEW_VERSION }}
     git add pyproject.toml uv.lock
     git commit -m "chore: bump version to {{ NEW_VERSION }}"
     just tag
+    git push origin main && git push origin v{{ NEW_VERSION }}
     echo ""
-    echo "Release v{{ NEW_VERSION }} prepared locally."
-    echo "Next steps:"
-    echo "  git push && git push origin v{{ NEW_VERSION }}"
+    echo "Release v{{ NEW_VERSION }} pushed. Watch Actions tab for publish status."
 
 # Build the package locally (for inspection)
 build:
