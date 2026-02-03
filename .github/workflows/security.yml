@@ -18,7 +18,7 @@ jobs:
         with:
           version: "latest"
       - run: uv sync --group dev
-      - run: uv run pip-audit --ignore-package tokentoss
+      - run: uv run pip-audit --skip-editable
 
   code-scan:
     runs-on: ubuntu-latest
