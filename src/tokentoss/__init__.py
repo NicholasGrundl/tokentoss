@@ -16,15 +16,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .auth_manager import AuthManager, ClientConfig, generate_pkce_pair, DEFAULT_SCOPES
+from ._logging import disable_debug, enable_debug
+from .auth_manager import DEFAULT_SCOPES, AuthManager, ClientConfig, generate_pkce_pair
 from .exceptions import (
-    TokenTossError,
-    NoCredentialsError,
-    TokenRefreshError,
-    TokenExchangeError,
-    StorageError,
     InsecureFilePermissionsWarning,
+    NoCredentialsError,
+    StorageError,
+    TokenExchangeError,
+    TokenRefreshError,
+    TokenTossError,
 )
+from .setup import configure, configure_from_credentials, configure_from_file, get_config_path
 from .storage import FileStorage, MemoryStorage, TokenData
 
 if TYPE_CHECKING:
@@ -37,30 +39,27 @@ __version__ = "0.1.0"
 CREDENTIALS: Credentials | None = None
 
 __all__ = [
-    # Version
-    "__version__",
-    # Module-level state
     "CREDENTIALS",
-    # Auth
+    "DEFAULT_SCOPES",
     "AuthManager",
     "ClientConfig",
-    "generate_pkce_pair",
-    "DEFAULT_SCOPES",
-    # Storage
     "FileStorage",
-    "MemoryStorage",
-    "TokenData",
-    # Exceptions
-    "TokenTossError",
-    "NoCredentialsError",
-    "TokenRefreshError",
-    "TokenExchangeError",
-    "StorageError",
     "InsecureFilePermissionsWarning",
-    # Widget (imported lazily to avoid anywidget dependency if not needed)
-    # "GoogleAuthWidget",
-    # Client (imported lazily)
-    # "IAPClient",
+    "MemoryStorage",
+    "NoCredentialsError",
+    "StorageError",
+    "TokenData",
+    "TokenExchangeError",
+    "TokenRefreshError",
+    "TokenTossError",
+    "__version__",
+    "configure",
+    "configure_from_credentials",
+    "configure_from_file",
+    "disable_debug",
+    "enable_debug",
+    "generate_pkce_pair",
+    "get_config_path",
 ]
 
 
@@ -68,8 +67,14 @@ def __getattr__(name: str):
     """Lazy import for optional components."""
     if name == "GoogleAuthWidget":
         from .widget import GoogleAuthWidget
+
         return GoogleAuthWidget
     if name == "IAPClient":
         from .client import IAPClient
+
         return IAPClient
+    if name == "ConfigureWidget":
+        from .configure_widget import ConfigureWidget
+
+        return ConfigureWidget
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

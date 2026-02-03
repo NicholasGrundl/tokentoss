@@ -6,15 +6,14 @@ import json
 import os
 import stat
 import warnings
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import platformdirs
 
-from .exceptions import StorageError, InsecureFilePermissionsWarning
-
+from .exceptions import InsecureFilePermissionsWarning, StorageError
 
 # Default application name for platformdirs
 APP_NAME = "tokentoss"
@@ -30,6 +29,7 @@ class TokenData:
     expiry: str  # ISO format datetime string
     scopes: list[str]
     user_email: str | None = None
+    created_at: str | None = None  # ISO format datetime string
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -45,7 +45,15 @@ class TokenData:
             expiry=data["expiry"],
             scopes=data.get("scopes", []),
             user_email=data.get("user_email"),
+            created_at=data.get("created_at"),
         )
+
+    @property
+    def created_at_datetime(self) -> datetime | None:
+        """Parse created_at string to datetime, or None if not set."""
+        if self.created_at is None:
+            return None
+        return datetime.fromisoformat(self.created_at.replace("Z", "+00:00"))
 
     @property
     def expiry_datetime(self) -> datetime:
@@ -143,7 +151,7 @@ class FileStorage:
         self._check_permissions()
 
         try:
-            with open(self.path, "r") as f:
+            with open(self.path) as f:
                 data = json.load(f)
             return TokenData.from_dict(data)
 

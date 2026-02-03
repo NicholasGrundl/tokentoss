@@ -27,12 +27,23 @@ dependencies = [
     "platformdirs>=4.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/NicholasGrundl/tokentoss"
+Repository = "https://github.com/NicholasGrundl/tokentoss"
+Issues = "https://github.com/NicholasGrundl/tokentoss/issues"
+Changelog = "https://github.com/NicholasGrundl/tokentoss/releases"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-mock>=3.12.0",
     "jupyter>=1.0.0",
     "jupyterlab>=4.0.0",
+    "ruff>=0.11.0",
+    "ty>=0.0.1a7",
+    "pip-audit>=2.7.0",
+    "bandit>=1.7.0",
 ]
 
 [build-system]
@@ -45,3 +56,53 @@ packages = ["src/tokentoss"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes — unused imports, undefined names
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "I",      # isort — import ordering
+    "UP",     # pyupgrade — modernize for 3.10+
+    "B",      # flake8-bugbear — common bugs
+    "SIM",    # flake8-simplify — simplification
+    "C4",     # flake8-comprehensions — comprehension style
+    "PT",     # flake8-pytest-style — pytest conventions
+    "T20",    # flake8-print — no stray print() in library code
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",   # line length handled by formatter
+    "SIM105", # contextlib.suppress — prefer explicit try/except/pass
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tokentoss"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20"]  # allow print() in tests
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.bandit]
+targets = ["src/"]
+exclude_dirs = ["tests/"]
+skips = ["B105"]  # false positives on Google OAuth URL constants named *TOKEN*
+
+[[tool.ty.overrides]]
+include = ["src/tokentoss/widget.py"]
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"

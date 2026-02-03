@@ -2,20 +2,17 @@
 
 import json
 import os
-import stat
-import tempfile
 import warnings
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
+from tokentoss.exceptions import InsecureFilePermissionsWarning, StorageError
 from tokentoss.storage import (
-    TokenData,
-    MemoryStorage,
     FileStorage,
+    MemoryStorage,
+    TokenData,
 )
-from tokentoss.exceptions import StorageError, InsecureFilePermissionsWarning
 
 
 class TestTokenData:
@@ -98,6 +95,59 @@ class TestTokenData:
 
         assert token.is_expired is True
 
+    def test_created_at_round_trip(self):
+        """Test created_at survives to_dict / from_dict round trip."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=["openid"],
+            created_at="2024-01-15T09:00:00+00:00",
+        )
+
+        data = token.to_dict()
+        assert data["created_at"] == "2024-01-15T09:00:00+00:00"
+
+        restored = TokenData.from_dict(data)
+        assert restored.created_at == "2024-01-15T09:00:00+00:00"
+
+    def test_created_at_none_by_default(self):
+        """Test created_at is None when not provided."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=[],
+        )
+
+        assert token.created_at is None
+        assert token.created_at_datetime is None
+
+        # Round-trip preserves None
+        data = token.to_dict()
+        assert data["created_at"] is None
+        restored = TokenData.from_dict(data)
+        assert restored.created_at is None
+
+    def test_created_at_datetime_property(self):
+        """Test created_at_datetime parses ISO string."""
+        token = TokenData(
+            access_token="a",
+            id_token="i",
+            refresh_token="r",
+            expiry="2024-01-15T10:30:00+00:00",
+            scopes=[],
+            created_at="2024-01-15T09:00:00+00:00",
+        )
+
+        dt = token.created_at_datetime
+        assert dt is not None
+        assert dt.year == 2024
+        assert dt.month == 1
+        assert dt.hour == 9
+
 
 class TestMemoryStorage:
     """Tests for MemoryStorage."""
@@ -145,13 +195,15 @@ class TestMemoryStorage:
         storage = MemoryStorage()
         assert storage.exists() is False
 
-        storage.save(TokenData(
-            access_token="a",
-            id_token="i",
-            refresh_token="r",
-            expiry="2024-01-15T10:30:00+00:00",
-            scopes=[],
-        ))
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2024-01-15T10:30:00+00:00",
+                scopes=[],
+            )
+        )
         assert storage.exists() is True
 
 
@@ -184,13 +236,15 @@ class TestFileStorage:
         token_file = tmp_path / "subdir" / "tokens.json"
         storage = FileStorage(path=token_file)
 
-        storage.save(TokenData(
-            access_token="a",
-            id_token="i",
-            refresh_token="r",
-            expiry="2024-01-15T10:30:00+00:00",
-            scopes=[],
-        ))
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2024-01-15T10:30:00+00:00",
+                scopes=[],
+            )
+        )
 
         assert token_file.exists()
 
@@ -199,13 +253,15 @@ class TestFileStorage:
         token_file = tmp_path / "tokens.json"
         storage = FileStorage(path=token_file)
 
-        storage.save(TokenData(
-            access_token="a",
-            id_token="i",
-            refresh_token="r",
-            expiry="2024-01-15T10:30:00+00:00",
-            scopes=[],
-        ))
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2024-01-15T10:30:00+00:00",
+                scopes=[],
+            )
+        )
 
         mode = token_file.stat().st_mode & 0o777
         assert mode == 0o600  # Owner read/write only
@@ -215,13 +271,17 @@ class TestFileStorage:
         token_file = tmp_path / "tokens.json"
 
         # Create file with insecure permissions
-        token_file.write_text(json.dumps({
-            "access_token": "a",
-            "id_token": "i",
-            "refresh_token": "r",
-            "expiry": "2024-01-15T10:30:00+00:00",
-            "scopes": [],
-        }))
+        token_file.write_text(
+            json.dumps(
+                {
+                    "access_token": "a",
+                    "id_token": "i",
+                    "refresh_token": "r",
+                    "expiry": "2024-01-15T10:30:00+00:00",
+                    "scopes": [],
+                }
+            )
+        )
         os.chmod(token_file, 0o644)  # World readable
 
         storage = FileStorage(path=token_file)
@@ -246,13 +306,15 @@ class TestFileStorage:
         token_file = tmp_path / "tokens.json"
         storage = FileStorage(path=token_file)
 
-        storage.save(TokenData(
-            access_token="a",
-            id_token="i",
-            refresh_token="r",
-            expiry="2024-01-15T10:30:00+00:00",
-            scopes=[],
-        ))
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2024-01-15T10:30:00+00:00",
+                scopes=[],
+            )
+        )
 
         assert token_file.exists()
         storage.clear()
@@ -265,13 +327,15 @@ class TestFileStorage:
 
         assert storage.exists() is False
 
-        storage.save(TokenData(
-            access_token="a",
-            id_token="i",
-            refresh_token="r",
-            expiry="2024-01-15T10:30:00+00:00",
-            scopes=[],
-        ))
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2024-01-15T10:30:00+00:00",
+                scopes=[],
+            )
+        )
         assert storage.exists() is True
 
     def test_invalid_json_raises_error(self, tmp_path):

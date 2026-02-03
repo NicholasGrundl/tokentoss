@@ -1,0 +1,39 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 8:00 UTC
+    - cron: "0 8 * * 1"
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - run: uv sync --group dev
+      # TODO: Periodically review ignored CVEs — remove once fixed versions are adopted
+      # See https://github.com/NicholasGrundl/tokentoss/issues/2 for plan to migrate to osv-scanner
+      # CVE-2025-53000: nbconvert 7.16.6 — no fix available yet
+      # CVE-2026-1703:  pip 25.3 — fixed in pip 26.0
+      - run: >-
+          uv run pip-audit
+          --skip-editable
+          --ignore-vuln CVE-2025-53000
+          --ignore-vuln CVE-2026-1703
+
+  code-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - run: uv sync --group dev
+      - run: uv run bandit -r src/ -c pyproject.toml

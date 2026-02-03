@@ -9,6 +9,8 @@
 *.env
 .env*
 
+#secrets
+client_secrets.json
 
 
 ###########################

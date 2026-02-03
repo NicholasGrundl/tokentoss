@@ -5,12 +5,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import os
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import requests
 from google.oauth2.credentials import Credentials
@@ -32,6 +31,9 @@ DEFAULT_SCOPES = [
     "email",
     "profile",
 ]
+
+# Default max session lifetime in hours
+DEFAULT_MAX_SESSION_LIFETIME_HOURS = 24
 
 
 @dataclass
@@ -72,8 +74,7 @@ class ClientConfig:
             config = data["web"]
         else:
             raise ValueError(
-                "Invalid client_secrets.json format. "
-                "Expected 'installed' or 'web' key."
+                "Invalid client_secrets.json format. Expected 'installed' or 'web' key."
             )
 
         return cls(
@@ -112,6 +113,7 @@ class AuthManager:
         client_secrets_path: str | Path | None = None,
         storage: FileStorage | MemoryStorage | None = None,
         scopes: list[str] | None = None,
+        max_session_lifetime_hours: int = DEFAULT_MAX_SESSION_LIFETIME_HOURS,
     ) -> None:
         """Initialize AuthManager.
 
@@ -120,6 +122,8 @@ class AuthManager:
             client_secrets_path: Path to client_secrets.json (alternative to client_config).
             storage: Token storage backend. Defaults to FileStorage.
             scopes: OAuth scopes. Defaults to DEFAULT_SCOPES.
+            max_session_lifetime_hours: Maximum session lifetime in hours before
+                requiring re-authentication. Defaults to 24.
 
         Raises:
             ValueError: If neither client_config nor client_secrets_path provided.
@@ -130,15 +134,27 @@ class AuthManager:
         elif client_secrets_path is not None:
             self.client_config = ClientConfig.from_file(client_secrets_path)
         else:
-            raise ValueError(
-                "Either client_config or client_secrets_path must be provided"
-            )
+            # Auto-discover from standard platformdirs location
+            from .setup import get_config_path
+
+            default_path = get_config_path()
+            if default_path.exists():
+                self.client_config = ClientConfig.from_file(default_path)
+            else:
+                raise ValueError(
+                    "No client config provided. Either pass client_config or "
+                    "client_secrets_path, or run tokentoss.configure() to install "
+                    f"credentials at {default_path}"
+                )
 
         # Set up storage
         self.storage = storage if storage is not None else FileStorage()
 
         # Set scopes
         self.scopes = scopes if scopes is not None else DEFAULT_SCOPES.copy()
+
+        # Session lifetime
+        self.max_session_lifetime_hours = max_session_lifetime_hours
 
         # State
         self._credentials: Credentials | None = None
@@ -148,11 +164,44 @@ class AuthManager:
         # Try to load existing tokens
         self._load_from_storage()
 
+    def _is_session_stale(self, token_data: TokenData) -> bool:
+        """Check if the session has exceeded the max lifetime.
+
+        Returns False if created_at is None (backward compat with old tokens).
+        """
+        if token_data.created_at is None:
+            return False
+        created = token_data.created_at_datetime
+        if created is None:
+            return False
+        age = datetime.now(timezone.utc) - created
+        return age > timedelta(hours=self.max_session_lifetime_hours)
+
     def _load_from_storage(self) -> None:
         """Load tokens from storage if available."""
         try:
             token_data = self.storage.load()
             if token_data is not None:
+                # Check if session is stale (max lifetime exceeded)
+                if self._is_session_stale(token_data):
+                    self.storage.clear()
+                    self.last_error = Exception("Session expired — sign in again")
+                    return
+
+                # Check if token is expired and try to refresh
+                if token_data.is_expired:
+                    try:
+                        self._token_data = token_data
+                        self._credentials = self._create_credentials(token_data)
+                        self.refresh_tokens()
+                        self._set_module_credentials()
+                    except TokenRefreshError:
+                        self._credentials = None
+                        self._token_data = None
+                        self.storage.clear()
+                        self.last_error = Exception("Session expired — sign in again")
+                    return
+
                 self._token_data = token_data
                 self._credentials = self._create_credentials(token_data)
 
@@ -289,7 +338,9 @@ class AuthManager:
 
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
-                error_msg = error_data.get("error_description", error_data.get("error", "Unknown error"))
+                error_msg = error_data.get(
+                    "error_description", error_data.get("error", "Unknown error")
+                )
                 raise TokenExchangeError(f"Token exchange failed: {error_msg}")
 
             data = response.json()
@@ -310,6 +361,7 @@ class AuthManager:
                 expiry=expiry.isoformat(),
                 scopes=data.get("scope", " ".join(self.scopes)).split(),
                 user_email=user_email,
+                created_at=datetime.now(timezone.utc).isoformat(),
             )
 
             # Save tokens
@@ -356,7 +408,9 @@ class AuthManager:
 
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
-                error_msg = error_data.get("error_description", error_data.get("error", "Unknown error"))
+                error_msg = error_data.get(
+                    "error_description", error_data.get("error", "Unknown error")
+                )
                 raise TokenRefreshError(f"Token refresh failed: {error_msg}")
 
             data = response.json()
@@ -377,8 +431,11 @@ class AuthManager:
                 id_token=data.get("id_token", self._token_data.id_token),
                 refresh_token=data.get("refresh_token", self._token_data.refresh_token),
                 expiry=expiry.isoformat(),
-                scopes=data.get("scope", " ".join(self._token_data.scopes)).split() if isinstance(self._token_data.scopes, list) else self._token_data.scopes,
+                scopes=data.get("scope", " ".join(self._token_data.scopes)).split()
+                if isinstance(self._token_data.scopes, list)
+                else self._token_data.scopes,
                 user_email=user_email,
+                created_at=self._token_data.created_at,
             )
 
             # Update credentials and save
@@ -431,4 +488,5 @@ class AuthManager:
 
         # Clear module-level variable
         import tokentoss
+
         tokentoss.CREDENTIALS = None

@@ -1,10 +1,9 @@
 """Tests for tokentoss.auth_manager module."""
 
+import base64
 import json
-import tempfile
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
@@ -12,11 +11,9 @@ from tokentoss.auth_manager import (
     AuthManager,
     ClientConfig,
     generate_pkce_pair,
-    GOOGLE_AUTH_URI,
-    GOOGLE_TOKEN_URI,
 )
-from tokentoss.storage import MemoryStorage, TokenData
 from tokentoss.exceptions import TokenExchangeError, TokenRefreshError
+from tokentoss.storage import MemoryStorage, TokenData
 
 
 class TestClientConfig:
@@ -25,15 +22,19 @@ class TestClientConfig:
     def test_from_file_installed(self, tmp_path):
         """Test loading from installed (desktop) app format."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "installed": {
-                "client_id": "test-client-id.apps.googleusercontent.com",
-                "client_secret": "test-secret",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["http://localhost"],
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "installed": {
+                        "client_id": "test-client-id.apps.googleusercontent.com",
+                        "client_secret": "test-secret",
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "redirect_uris": ["http://localhost"],
+                    }
+                }
+            )
+        )
 
         config = ClientConfig.from_file(secrets_file)
 
@@ -44,12 +45,16 @@ class TestClientConfig:
     def test_from_file_web(self, tmp_path):
         """Test loading from web app format."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "web": {
-                "client_id": "web-client-id.apps.googleusercontent.com",
-                "client_secret": "web-secret",
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "web": {
+                        "client_id": "web-client-id.apps.googleusercontent.com",
+                        "client_secret": "web-secret",
+                    }
+                }
+            )
+        )
 
         config = ClientConfig.from_file(secrets_file)
 
@@ -65,7 +70,7 @@ class TestClientConfig:
         secrets_file = tmp_path / "client_secrets.json"
         secrets_file.write_text(json.dumps({"invalid": {}}))
 
-        with pytest.raises(ValueError, match="Invalid client_secrets.json"):
+        with pytest.raises(ValueError, match=r"Invalid client_secrets\.json"):
             ClientConfig.from_file(secrets_file)
 
 
@@ -127,12 +132,16 @@ class TestAuthManager:
     def test_init_with_secrets_path(self, tmp_path):
         """Test initialization with client_secrets_path."""
         secrets_file = tmp_path / "client_secrets.json"
-        secrets_file.write_text(json.dumps({
-            "installed": {
-                "client_id": "test-id",
-                "client_secret": "test-secret",
-            }
-        }))
+        secrets_file.write_text(
+            json.dumps(
+                {
+                    "installed": {
+                        "client_id": "test-id",
+                        "client_secret": "test-secret",
+                    }
+                }
+            )
+        )
 
         manager = AuthManager(
             client_secrets_path=secrets_file,
@@ -141,9 +150,13 @@ class TestAuthManager:
 
         assert manager.client_config.client_id == "test-id"
 
-    def test_init_requires_config(self):
+    def test_init_requires_config(self, mocker):
         """Test that either config or path is required."""
-        with pytest.raises(ValueError, match="Either client_config or client_secrets_path"):
+        mocker.patch(
+            "tokentoss.setup.get_config_path",
+            return_value=Path("/nonexistent/path/client_secrets.json"),
+        )
+        with pytest.raises(ValueError, match="No client config provided"):
             AuthManager(storage=MemoryStorage())
 
     def test_get_authorization_url(self, auth_manager):
@@ -168,10 +181,9 @@ class TestAuthManager:
 
         assert "state=csrf-token-123" in url
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_success(self, mock_post, auth_manager):
+    def test_exchange_code_success(self, auth_manager, mocker):
         """Test successful code exchange."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token-123",
@@ -180,7 +192,7 @@ class TestAuthManager:
             "expires_in": 3600,
             "scope": "openid email",
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.exchange_code(
             auth_code="auth-code-123",
@@ -191,17 +203,17 @@ class TestAuthManager:
         assert token_data.refresh_token == "refresh-token-123"
         assert auth_manager.is_authenticated is True
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_extracts_email(self, mock_post, auth_manager):
+    def test_exchange_code_extracts_email(self, auth_manager, mocker):
         """Test that email is extracted from ID token."""
         # ID token with email claim (header.payload.signature format)
-        import base64
-        payload = base64.urlsafe_b64encode(
-            json.dumps({"email": "user@example.com"}).encode()
-        ).rstrip(b"=").decode()
+        payload = (
+            base64.urlsafe_b64encode(json.dumps({"email": "user@example.com"}).encode())
+            .rstrip(b"=")
+            .decode()
+        )
         id_token = f"eyJhbGciOiJSUzI1NiJ9.{payload}.signature"
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token",
@@ -209,27 +221,25 @@ class TestAuthManager:
             "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.exchange_code("code", "verifier")
 
         assert token_data.user_email == "user@example.com"
         assert auth_manager.user_email == "user@example.com"
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_exchange_code_failure(self, mock_post, auth_manager):
+    def test_exchange_code_failure(self, auth_manager, mocker):
         """Test code exchange failure handling."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 400
         mock_response.content = b'{"error": "invalid_grant"}'
         mock_response.json.return_value = {"error": "invalid_grant"}
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         with pytest.raises(TokenExchangeError, match="invalid_grant"):
             auth_manager.exchange_code("bad-code", "verifier")
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_refresh_tokens_success(self, mock_post, auth_manager):
+    def test_refresh_tokens_success(self, auth_manager, mocker):
         """Test successful token refresh."""
         # First, set up initial tokens
         auth_manager._token_data = TokenData(
@@ -240,14 +250,14 @@ class TestAuthManager:
             scopes=["openid"],
         )
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "new-access-token",
             "id_token": "new-id-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         token_data = auth_manager.refresh_tokens()
 
@@ -260,8 +270,7 @@ class TestAuthManager:
         with pytest.raises(TokenRefreshError, match="No refresh token"):
             auth_manager.refresh_tokens()
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_refresh_tokens_failure(self, mock_post, auth_manager):
+    def test_refresh_tokens_failure(self, auth_manager, mocker):
         """Test token refresh failure."""
         auth_manager._token_data = TokenData(
             access_token="old",
@@ -271,16 +280,16 @@ class TestAuthManager:
             scopes=[],
         )
 
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 400
         mock_response.content = b'{"error": "invalid_grant"}'
         mock_response.json.return_value = {"error": "invalid_grant"}
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         with pytest.raises(TokenRefreshError):
             auth_manager.refresh_tokens()
 
-    def test_clear(self, auth_manager):
+    def test_clear(self, auth_manager, mocker):
         """Test clearing credentials."""
         auth_manager._token_data = TokenData(
             access_token="a",
@@ -289,7 +298,7 @@ class TestAuthManager:
             expiry="2099-01-01T00:00:00+00:00",
             scopes=[],
         )
-        auth_manager._credentials = Mock()
+        auth_manager._credentials = mocker.Mock()
 
         auth_manager.clear()
 
@@ -297,10 +306,9 @@ class TestAuthManager:
         assert auth_manager._credentials is None
         assert auth_manager.storage.load() is None
 
-    @patch("tokentoss.auth_manager.requests.post")
-    def test_sets_module_credentials(self, mock_post, auth_manager):
+    def test_sets_module_credentials(self, auth_manager, mocker):
         """Test that module-level CREDENTIALS is set on success."""
-        mock_response = Mock()
+        mock_response = mocker.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "access_token": "access-token",
@@ -308,24 +316,27 @@ class TestAuthManager:
             "refresh_token": "refresh-token",
             "expires_in": 3600,
         }
-        mock_post.return_value = mock_response
+        mocker.patch("tokentoss.auth_manager.requests.post", return_value=mock_response)
 
         auth_manager.exchange_code("code", "verifier")
 
         import tokentoss
+
         assert tokentoss.CREDENTIALS is not None
 
     def test_loads_from_storage_on_init(self, client_config):
         """Test that tokens are loaded from storage on init."""
         storage = MemoryStorage()
-        storage.save(TokenData(
-            access_token="stored-access",
-            id_token="stored-id",
-            refresh_token="stored-refresh",
-            expiry="2099-01-01T00:00:00+00:00",
-            scopes=["openid"],
-            user_email="stored@example.com",
-        ))
+        storage.save(
+            TokenData(
+                access_token="stored-access",
+                id_token="stored-id",
+                refresh_token="stored-refresh",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                user_email="stored@example.com",
+            )
+        )
 
         manager = AuthManager(
             client_config=client_config,
@@ -334,3 +345,156 @@ class TestAuthManager:
 
         assert manager.is_authenticated is True
         assert manager.user_email == "stored@example.com"
+
+
+class TestSessionLifetime:
+    """Tests for session lifetime and expiry checks."""
+
+    @pytest.fixture
+    def client_config(self):
+        return ClientConfig(
+            client_id="test-client-id.apps.googleusercontent.com",
+            client_secret="test-secret",
+        )
+
+    def test_stale_session_cleared(self, client_config):
+        """Test that a session older than max lifetime is cleared."""
+        storage = MemoryStorage()
+        old_created = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=old_created,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is False
+        assert storage.load() is None
+        assert manager.last_error is not None
+        assert "Session expired" in str(manager.last_error)
+
+    def test_fresh_session_not_cleared(self, client_config):
+        """Test that a session within max lifetime is kept."""
+        storage = MemoryStorage()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True
+
+    def test_expired_token_refresh_succeeds(self, client_config, mocker):
+        """Test that expired token within session lifetime is refreshed."""
+        storage = MemoryStorage()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        storage.save(
+            TokenData(
+                access_token="old-access",
+                id_token="old-id",
+                refresh_token="refresh-123",
+                expiry="2020-01-01T00:00:00+00:00",  # expired
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "access_token": "new-access",
+            "id_token": "new-id",
+            "expires_in": 3600,
+        }
+        mocker.patch(
+            "tokentoss.auth_manager.requests.post",
+            return_value=mock_response,
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True
+        assert manager._token_data.access_token == "new-access"
+
+    def test_expired_token_refresh_fails_clears_creds(self, client_config, mocker):
+        """Test that failed refresh clears credentials and storage."""
+        storage = MemoryStorage()
+        recent_created = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        storage.save(
+            TokenData(
+                access_token="old-access",
+                id_token="old-id",
+                refresh_token="refresh-123",
+                expiry="2020-01-01T00:00:00+00:00",  # expired
+                scopes=["openid"],
+                created_at=recent_created,
+            )
+        )
+
+        mock_response = mocker.Mock()
+        mock_response.status_code = 400
+        mock_response.content = b'{"error": "invalid_grant"}'
+        mock_response.json.return_value = {"error": "invalid_grant"}
+        mocker.patch(
+            "tokentoss.auth_manager.requests.post",
+            return_value=mock_response,
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is False
+        assert storage.load() is None
+        assert manager.last_error is not None
+        assert "Session expired" in str(manager.last_error)
+
+    def test_backward_compat_no_created_at(self, client_config):
+        """Test that tokens without created_at are treated as fresh."""
+        storage = MemoryStorage()
+        storage.save(
+            TokenData(
+                access_token="a",
+                id_token="i",
+                refresh_token="r",
+                expiry="2099-01-01T00:00:00+00:00",
+                scopes=["openid"],
+                created_at=None,
+            )
+        )
+
+        manager = AuthManager(
+            client_config=client_config,
+            storage=storage,
+            max_session_lifetime_hours=24,
+        )
+
+        assert manager.is_authenticated is True

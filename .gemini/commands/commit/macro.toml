@@ -1,4 +1,17 @@
 description = "Creates a macro commit consolidating recent micro commits"
 prompt = """
-!{.gemini/hooks/macro-commit.sh --force}
+You are performing a Macro Commit.
+I have prepared the context and staged all pending files.
+
+!{bash .gemini/hooks/macro-commit.sh --context --force}
+
+INSTRUCTIONS:
+1. Review the "Session Data" above, including micro-commits and the cumulative diff.
+2. Generate a comprehensive git commit message that summarizes the session.
+   - Use the Conventional Commits format (type(scope): description).
+   - Include a body that tells the "story" of the development session (challenges, fixes, iterations).
+3. Use the `run_shell_command` tool to execute the commit:
+   `git commit -m "[MACRO] <your_generated_message>"`
+
+Do NOT ask for confirmation. Just generate the message and run the command.
 """
