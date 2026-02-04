@@ -33,17 +33,18 @@ jobs:
             exit 1
           fi
 
-      - name: Bump version in pyproject.toml
-        run: |
-          OLD=$(grep '^version' pyproject.toml | head -1 | cut -d'"' -f2)
-          sed -i "s/^version = \"$OLD\"/version = \"${{ inputs.version }}\"/" pyproject.toml
-
-      - name: Commit, tag, and push
+      - name: Bump version if needed, tag, and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "chore: bump version to ${{ inputs.version }}"
+          CURRENT=$(grep '^version' pyproject.toml | head -1 | cut -d'"' -f2)
+          if [ "$CURRENT" != "${{ inputs.version }}" ]; then
+            sed -i "s/^version = \"$CURRENT\"/version = \"${{ inputs.version }}\"/" pyproject.toml
+            git add pyproject.toml
+            git commit -m "chore: bump version to ${{ inputs.version }}"
+            git push origin main
+          else
+            echo "Version already ${{ inputs.version }}, skipping bump."
+          fi
           git tag "v${{ inputs.version }}"
-          git push origin main
           git push origin "v${{ inputs.version }}"
