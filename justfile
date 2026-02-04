@@ -109,9 +109,14 @@ start-release NEW_VERSION:
     fi
 
     # All checks passed — execute release
-    just bump {{ NEW_VERSION }}
-    git add pyproject.toml uv.lock
-    git commit -m "chore: bump version to {{ NEW_VERSION }}"
+    CURRENT=$(grep '^version' pyproject.toml | head -1 | cut -d'"' -f2)
+    if [ "$CURRENT" != "{{ NEW_VERSION }}" ]; then
+      just bump {{ NEW_VERSION }}
+      git add pyproject.toml uv.lock
+      git commit -m "chore: bump version to {{ NEW_VERSION }}"
+    else
+      echo "Version already {{ NEW_VERSION }}, skipping bump."
+    fi
     just tag
     git push origin main && git push origin v{{ NEW_VERSION }}
     echo ""
