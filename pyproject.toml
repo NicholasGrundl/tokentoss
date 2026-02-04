@@ -1,6 +1,6 @@
 [project]
 name = "tokentoss"
-version = "0.1.0"
+version = "0.1.1"
 description = "OAuth authentication from Jupyter notebooks for IAP-protected GCP services"
 readme = "README.md"
 requires-python = ">=3.10"
