@@ -1,5 +1,16 @@
 # Documentation & Tutorials
 
+> Three-tier documentation strategy for end users and contributors. Tier 1 (quickstart + GCP admin setup) shipped with v0.1.0; Tier 2 (API reference, example notebooks) and Tier 3 (hosted site, troubleshooting, changelog) remain.
+
+**Status**: Planned
+**Priority**: P0
+**Phase**: TBD
+**Last updated**: 2026-05-13
+
+**Progress note**: Tier 1 is complete — `docs/quickstart.md` and `docs/gcp-admin-setup.md` exist on disk as of v0.1.0. This spec now scopes the remaining Tier 2 + Tier 3 work.
+
+---
+
 ## Audience
 
 Two groups with different needs:
