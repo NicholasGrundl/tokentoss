@@ -1,5 +1,14 @@
 # Widgets Subpackage Refactor
 
+> Refactor `widget.py` and `configure_widget.py` into a `widgets/` subpackage to improve organization and make room for future widgets.
+
+**Status**: Planned
+**Priority**: P1
+**Phase**: TBD
+**Last updated**: 2026-05-13
+
+---
+
 ## Motivation
 
 Two widgets exist (`GoogleAuthWidget`, `ConfigureWidget`) with more likely to come. The largest file in the package is `widget.py` at ~730 lines. Moving to a `widgets/` subpackage improves organization and gives room to grow.

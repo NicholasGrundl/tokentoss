@@ -1,4 +1,15 @@
-# Project Architectural Analysis
+# Architectural Improvements
+
+> Address detached token refresh, global state coupling, and storage concurrency limitations identified in the v0.1.0 architectural review.
+
+**Status**: Planned
+**Priority**: P2
+**Phase**: TBD
+**Last updated**: 2026-05-13
+
+---
+
+## Problem
 
 This document outlines architectural observations and potential areas for improvement within the `tokentoss` codebase, focused on enhancing robustness and scalability beyond the initial Jupyter-centric implementation.
 
