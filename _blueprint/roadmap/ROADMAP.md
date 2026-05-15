@@ -5,6 +5,7 @@ Slim phase index — each entry points to its feature spec. Detailed status for 
 | Phase | Feature                          | Spec                                                                       | Priority | Status    |
 |-------|----------------------------------|----------------------------------------------------------------------------|----------|-----------|
 | 1     | v0.1.0 Release                   | `archive/features/[completed]release-implementation-v1.md`                 | P0       | Completed |
+| TBD   | Google Sheets Prototype          | `features/[planning]google-sheets-prototype-testing.md`                    | P0       | Planned   |
 | TBD   | Workspace API Integrations       | `features/[planning]workspace-api-integrations-v1.md`                      | P0       | Planned   |
 | TBD   | Docs Tier 2 + Tier 3             | `features/[planning]docs-and-tutorials-v1.md`                              | P0       | Planned   |
 | TBD   | Widgets Subpackage Refactor      | `features/[planning]widgets-subpackage-v1.md`                              | P1       | Planned   |
